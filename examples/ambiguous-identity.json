@@ -1,0 +1,13 @@
+{
+  "nodes": [
+    {"id": "AFS:4711", "system": "AFS", "object": "customer"},
+    {"id": "AFS:4712", "system": "AFS", "object": "customer"},
+    {"id": "MDG:7200311", "system": "MDG", "object": "business-partner"},
+    {"id": "MDG:7200312", "system": "MDG", "object": "business-partner"}
+  ],
+  "relationships": [
+    {"from": "AFS:4711", "to": "MDG:7200311", "type": "mapped_to"},
+    {"from": "AFS:4711", "to": "MDG:7200312", "type": "mapped_to"},
+    {"from": "AFS:4712", "to": "MDG:7200311", "type": "mapped_to"}
+  ]
+}
