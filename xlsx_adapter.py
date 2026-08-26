@@ -56,8 +56,7 @@ def _sheet_paths(book: zipfile.ZipFile) -> dict[str, str]:
         if not name or not rel_id or rel_id not in targets:
             continue
         target = targets[rel_id].lstrip("/")
-        path = str(PurePosixPath("xl") / target) if not target.startswith("xl/") else target
-        result[name] = path
+        result[name] = str(PurePosixPath("xl") / target) if not target.startswith("xl/") else target
     return result
 
 
@@ -84,20 +83,18 @@ def read_sheet(path: Path, sheet_name: str) -> Iterator[tuple[int, dict[str, str
             raise ValueError(f"worksheet {sheet_name!r} not found in {path.name!r}; available: {sorted(sheets)}")
         shared = _shared_strings(book)
         root = ET.fromstring(book.read(sheets[sheet_name]))
-
         header: list[str] | None = None
+
         for row in root.findall(f".//{{{MAIN_NS}}}row"):
             row_number = int(row.attrib.get("r", "0") or 0)
             cells: dict[int, str] = {}
             for cell in row.findall(f"{{{MAIN_NS}}}c"):
                 ref = cell.attrib.get("r")
-                if not ref:
-                    continue
-                cells[_column_index(ref)] = _cell_value(cell, shared)
+                if ref:
+                    cells[_column_index(ref)] = _cell_value(cell, shared)
             if not cells:
                 continue
-            width = max(cells) + 1
-            values = [cells.get(index, "") for index in range(width)]
+            values = [cells.get(index, "") for index in range(max(cells) + 1)]
             if header is None:
                 header = [str(value).strip() for value in values]
                 if not any(header):
@@ -107,7 +104,7 @@ def read_sheet(path: Path, sheet_name: str) -> Iterator[tuple[int, dict[str, str
                     raise ValueError(f"worksheet {sheet_name!r} has duplicate headers: {duplicates}")
                 continue
             padded = values + [""] * max(0, len(header) - len(values))
-            yield row_number, {name: padded[index] if index < len(padded) else "" for index, name in enumerate(header) if name}
+            yield row_number, {name: padded[index] for index, name in enumerate(header) if name}
 
 
 def _normalizers(manifest: dict[str, Any], source: dict[str, Any]) -> dict[str, list[str]]:
@@ -115,7 +112,7 @@ def _normalizers(manifest: dict[str, Any], source: dict[str, Any]) -> dict[str, 
     for collection in (manifest.get("normalizers", {}), source.get("normalizers", {})):
         for field, value in collection.items():
             rules = [value] if isinstance(value, str) else list(value)
-            result[str(field)] = [str(rule) for rule in rules]
+            result.setdefault(str(field), []).extend(str(rule) for rule in rules)
     return result
 
 
