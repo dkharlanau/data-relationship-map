@@ -1,0 +1,43 @@
+import tempfile
+import unittest
+from pathlib import Path
+
+from csv_adapter import build_model
+from relationship_map import analyze, shortest_path
+
+
+class CsvAdapterTests(unittest.TestCase):
+    def test_build_model_from_crosswalk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            (base / "crosswalk.csv").write_text(
+                "AFS,MDG,S4\n4711,7200311,10000345\n", encoding="utf-8"
+            )
+            manifest = {
+                "node_sources": [
+                    {"file": "crosswalk.csv", "id": "AFS:{AFS}", "system": "AFS", "object": "customer"},
+                    {"file": "crosswalk.csv", "id": "MDG:{MDG}", "system": "MDG", "object": "business-partner"},
+                    {"file": "crosswalk.csv", "id": "S4:{S4}", "system": "S4", "object": "business-partner"},
+                ],
+                "relationship_sources": [
+                    {"file": "crosswalk.csv", "from": "AFS:{AFS}", "to": "MDG:{MDG}", "type": "mapped_to"},
+                    {"file": "crosswalk.csv", "from": "MDG:{MDG}", "to": "S4:{S4}", "type": "replicated_to"},
+                ],
+            }
+            model = build_model(manifest, base)
+            self.assertEqual(len(model["nodes"]), 3)
+            self.assertEqual(len(model["relationships"]), 2)
+            self.assertTrue(analyze(model)["valid"])
+            self.assertEqual(shortest_path(model, "AFS:4711", "S4:10000345"), ["AFS:4711", "MDG:7200311", "S4:10000345"])
+
+    def test_missing_template_column_is_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            (base / "source.csv").write_text("ID\n1\n", encoding="utf-8")
+            manifest = {"node_sources": [{"file": "source.csv", "id": "X:{MISSING}"}]}
+            with self.assertRaisesRegex(ValueError, "missing CSV column"):
+                build_model(manifest, base)
+
+
+if __name__ == "__main__":
+    unittest.main()
