@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dkharlanau/data-relationship-map/schema/artifact-index.schema.json",
+  "title": "Data Relationship Map artifact index",
+  "type": "object",
+  "required": ["schema_version", "repository", "valid", "validation", "policy_evaluated", "policy_passed", "objects", "relationships", "findings"],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "repository": {"const": "dkharlanau/data-relationship-map"},
+    "valid": {"type": "boolean"},
+    "validation": {"type": "object"},
+    "policy_evaluated": {"type": "boolean"},
+    "policy_passed": {"type": ["boolean", "null"]},
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "artifact_ref", "system", "object"],
+        "properties": {
+          "id": {"type": "string"},
+          "artifact_ref": {"type": "string", "pattern": "^eac://dkharlanau/data-relationship-map/object/.+"},
+          "system": {},
+          "object": {},
+          "label": {},
+          "provenance": {},
+          "conflicts": {},
+          "identity_collisions": {}
+        },
+        "additionalProperties": false
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_ref", "from", "to", "from_ref", "to_ref", "type"],
+        "properties": {
+          "artifact_ref": {"type": "string", "pattern": "^eac://dkharlanau/data-relationship-map/relationship/.+"},
+          "from": {"type": "string"},
+          "to": {"type": "string"},
+          "from_ref": {"type": ["string", "null"]},
+          "to_ref": {"type": ["string", "null"]},
+          "type": {"type": "string"},
+          "provenance": {}
+        },
+        "additionalProperties": false
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_ref", "kind", "severity", "node", "node_ref"],
+        "properties": {
+          "artifact_ref": {"type": "string", "pattern": "^eac://dkharlanau/data-relationship-map/finding/.+"},
+          "kind": {"type": "string", "enum": ["cardinality", "identity_collision"]},
+          "severity": {"type": "string", "enum": ["error", "warning"]},
+          "node": {"type": "string"},
+          "node_ref": {"type": ["string", "null"]},
+          "relationship_type": {},
+          "direction": {},
+          "actual": {},
+          "allowed": {},
+          "related": {},
+          "raw_identities": {},
+          "provenance": {}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
