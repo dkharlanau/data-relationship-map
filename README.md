@@ -1,39 +1,67 @@
 # Data Relationship Map
 
-Visualize cross-system business-object relationships, identifiers, dependencies, and broken links from ordinary data exports.
+Visualize and validate cross-system business-object relationships, identifiers, dependencies, and broken links from ordinary enterprise data exports.
 
-## Problem
+## Why this exists
 
-Consultants often need to understand relationships across customer IDs, BP IDs, suppliers, materials, partner functions, organizational structures, and cross-system keys.
+Enterprise data investigations often start with several Excel/CSV extracts and a deceptively simple question: **how is this object related across systems?** Customer IDs, BP IDs, partner functions, organizational assignments, suppliers, materials, and legacy identifiers quickly turn into an implicit graph that is hard to inspect and easy to break.
 
-## Core idea
+Data Relationship Map makes that graph explicit and testable.
 
-Ingest ordinary data exports (customers.xlsx, partners.xlsx, sales-areas.xlsx, crosswalk.xlsx) and build a relationship graph across cross-system identifiers.
+## Current MVP
 
-## Example
+The repository now includes a zero-dependency Python engine that can:
 
-```text
-Legacy Customer 4711
-  -> MDG BP 7200311
-  -> S4 BP 10000345
-  -> Ship-To 10000891
-  -> Payer 10000345
+- validate node and relationship definitions
+- detect broken references
+- detect duplicate nodes and duplicate relationships
+- identify orphan objects
+- find the shortest cross-system path between two identifiers
+- run the same checks automatically in GitHub Actions
+
+## Quick start
+
+```bash
+python relationship_map.py examples/customer-chain.json validate
+python relationship_map.py examples/customer-chain.json path AFS:4711 S4:10000891
+python -m unittest discover -s tests -v
 ```
 
-## Initial scope
+Expected path:
 
-- multi-file relationship ingestion
-- configurable keys
-- graph generation
-- broken-reference detection
-- orphan detection
-- duplicate relationship detection
-- interactive object view
-- cross-system ID paths
+```text
+AFS:4711 -> MDG:7200311 -> S4:10000345 -> S4:10000891
+```
 
-## Long-term direction
+The example intentionally contains an unlinked S/4 customer so the analysis also demonstrates orphan detection.
 
-A portable relationship model for enterprise/master data analysis.
+## Canonical model
+
+```json
+{
+  "nodes": [
+    {"id": "AFS:4711", "system": "AFS", "object": "customer"},
+    {"id": "MDG:7200311", "system": "MDG", "object": "business-partner"}
+  ],
+  "relationships": [
+    {"from": "AFS:4711", "to": "MDG:7200311", "type": "mapped_to"}
+  ]
+}
+```
+
+The model is deliberately small. Source-specific Excel/CSV adapters can convert exports into this canonical representation without coupling the graph engine to SAP or any other platform.
+
+## Product direction
+
+Next layers are:
+
+1. CSV/Excel adapters and configurable composite keys.
+2. Relationship confidence and provenance.
+3. Directed lineage and impact analysis.
+4. HTML/Graphviz explorer for GitHub Pages.
+5. Cross-file identity resolution.
+6. Reconciliation-as-Code integration for expected-vs-observed links.
+7. Enterprise Change Graph integration for impact propagation.
 
 ## Design principles
 
@@ -60,4 +88,4 @@ A portable relationship model for enterprise/master data analysis.
 
 ## Status
 
-Planning.
+**MVP / active development.** The canonical graph validator, path finder, example model, tests, and CI are implemented.
