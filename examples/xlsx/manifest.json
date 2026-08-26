@@ -1,0 +1,14 @@
+{
+  "normalizers": {
+    "AFS_KUNNR": ["strip", "strip_leading_zeros"]
+  },
+  "node_sources": [
+    {"file": "customer_crosswalk.xlsx", "sheet": "Crosswalk", "id": "AFS:{AFS_KUNNR}", "system": "AFS", "object": "customer"},
+    {"file": "customer_crosswalk.xlsx", "sheet": "Crosswalk", "id": "MDG:{MDG_BP}", "system": "MDG", "object": "business-partner"},
+    {"file": "customer_crosswalk.xlsx", "sheet": "Crosswalk", "id": "S4:{S4_BP}", "system": "S4", "object": "business-partner"}
+  ],
+  "relationship_sources": [
+    {"file": "customer_crosswalk.xlsx", "sheet": "Crosswalk", "from": "AFS:{AFS_KUNNR}", "to": "MDG:{MDG_BP}", "type": "mapped_to"},
+    {"file": "customer_crosswalk.xlsx", "sheet": "Crosswalk", "from": "MDG:{MDG_BP}", "to": "S4:{S4_BP}", "type": "replicated_to"}
+  ]
+}
