@@ -1,41 +1,46 @@
 # Data Relationship Map
 
-Visualize and validate cross-system business-object relationships, identifiers, dependencies, and broken links from ordinary enterprise data exports.
+Turn ordinary enterprise exports into a traceable cross-system relationship graph for identity, linkage, lineage, and broken-reference investigations.
 
 ## Why this exists
 
-Enterprise data investigations often start with several Excel/CSV extracts and a deceptively simple question: **how is this object related across systems?** Customer IDs, BP IDs, partner functions, organizational assignments, suppliers, materials, and legacy identifiers quickly turn into an implicit graph that is hard to inspect and easy to break.
+Enterprise data investigations often start with several Excel/CSV extracts and a deceptively simple question: **how is this object related across systems?** Customer IDs, BP IDs, partner functions, organizational assignments, suppliers, materials, and legacy identifiers quickly become an implicit graph that is hard to inspect and easy to break.
 
-Data Relationship Map makes that graph explicit and testable.
+Data Relationship Map makes that graph explicit, testable, and explainable back to the source export.
 
-## Current MVP
-
-The repository now includes a zero-dependency Python engine that can:
+## Current capabilities
 
 - ingest ordinary CSV exports through a small manifest
-- normalize them into a canonical graph
-- validate node and relationship definitions
-- detect broken references
-- detect duplicate nodes and duplicate relationships
-- identify orphan objects
-- find the shortest cross-system path between two identifiers
+- normalize them into a vendor-neutral canonical graph
+- preserve source file + row provenance
+- surface conflicting attributes when the same ID appears with inconsistent metadata
+- detect broken references, duplicate nodes/relationships, and orphans
+- find the shortest cross-system path between identifiers
+- compare two graph snapshots and report relationship drift
+- detect newly created and resolved orphans
 - run the same checks automatically in GitHub Actions
 
 ## Quick start
 
-Analyze the bundled canonical example:
+Analyze a canonical graph:
 
 ```bash
 python relationship_map.py examples/customer-chain.json validate
 python relationship_map.py examples/customer-chain.json path AFS:4711 S4:10000891
 ```
 
-Build the graph from an ordinary CSV crosswalk first:
+Build it from a CSV crosswalk:
 
 ```bash
 python csv_adapter.py examples/csv/manifest.json --output customer-model.json
 python relationship_map.py customer-model.json validate
 python relationship_map.py customer-model.json path AFS:4711 S4:10000345
+```
+
+Compare two snapshots:
+
+```bash
+python relationship_diff.py examples/customer-chain.json examples/customer-chain-after.json
 ```
 
 Run tests:
@@ -45,8 +50,6 @@ python -m unittest discover -s tests -v
 ```
 
 ## CSV manifest
-
-A manifest maps CSV columns into canonical nodes and relationships without hard-coding SAP field names into the graph engine.
 
 ```json
 {
@@ -60,29 +63,38 @@ A manifest maps CSV columns into canonical nodes and relationships without hard-
 }
 ```
 
-This keeps source-specific exports at the boundary while the relationship engine remains vendor-neutral.
+Source-specific exports stay at the boundary while analysis remains reusable outside SAP.
 
 ## Canonical model
 
 ```json
 {
   "nodes": [
-    {"id": "AFS:4711", "system": "AFS", "object": "customer"},
-    {"id": "MDG:7200311", "system": "MDG", "object": "business-partner"}
+    {
+      "id": "AFS:4711",
+      "system": "AFS",
+      "object": "customer",
+      "provenance": [{"file": "customer_crosswalk.csv", "row": 2}]
+    }
   ],
   "relationships": [
-    {"from": "AFS:4711", "to": "MDG:7200311", "type": "mapped_to"}
+    {
+      "from": "AFS:4711",
+      "to": "MDG:7200311",
+      "type": "mapped_to",
+      "provenance": {"file": "customer_crosswalk.csv", "row": 2}
+    }
   ]
 }
 ```
 
 ## Product direction
 
-1. Excel (`.xlsx`) adapter and configurable composite keys.
-2. Relationship confidence and provenance.
-3. Directed lineage and impact analysis.
-4. HTML/Graphviz explorer for GitHub Pages.
-5. Cross-file identity resolution and merge diagnostics.
+1. `.xlsx` ingestion and composite/normalized keys.
+2. Many-to-one / one-to-many ambiguity diagnostics.
+3. Directed lineage and impact queries.
+4. Multi-file investigation summaries and prioritization.
+5. Export into the shared browser graph explorer.
 6. Reconciliation-as-Code integration for expected-vs-observed links.
 7. Enterprise Change Graph integration for impact propagation.
 
@@ -92,10 +104,10 @@ This keeps source-specific exports at the boundary while the relationship engine
 - portable
 - machine-readable
 - deterministic-first
-- visual where useful
+- provenance-preserving
 - Git-friendly
 - vendor-neutral where practical
-- interoperable with enterprise tools
+- synthetic examples safe to publish
 
 ## Related projects
 
@@ -111,4 +123,4 @@ This keeps source-specific exports at the boundary while the relationship engine
 
 ## Status
 
-**MVP / active development.** CSV ingestion, canonical graph validation, path finding, examples, tests, and CI are implemented.
+**MVP / active development.** CSV ingestion, provenance, graph validation, path analysis, snapshot drift, examples, tests, and CI are implemented.
