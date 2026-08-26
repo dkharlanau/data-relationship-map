@@ -29,6 +29,23 @@ class CsvAdapterTests(unittest.TestCase):
             self.assertEqual(len(model["relationships"]), 2)
             self.assertTrue(analyze(model)["valid"])
             self.assertEqual(shortest_path(model, "AFS:4711", "S4:10000345"), ["AFS:4711", "MDG:7200311", "S4:10000345"])
+            self.assertEqual(model["nodes"][0]["provenance"], [{"file": "crosswalk.csv", "row": 2}])
+            self.assertEqual(model["relationships"][0]["provenance"], {"file": "crosswalk.csv", "row": 2})
+
+    def test_same_node_merges_provenance_and_exposes_attribute_conflict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            (base / "a.csv").write_text("ID,LABEL\n1,Customer One\n", encoding="utf-8")
+            (base / "b.csv").write_text("ID,LABEL\n1,Customer 1\n", encoding="utf-8")
+            manifest = {"node_sources": [
+                {"file": "a.csv", "id": "S4:{ID}", "system": "S4", "object": "customer", "label": "{LABEL}"},
+                {"file": "b.csv", "id": "S4:{ID}", "system": "S4", "object": "customer", "label": "{LABEL}"},
+            ]}
+            model = build_model(manifest, base)
+            self.assertEqual(len(model["nodes"]), 1)
+            node = model["nodes"][0]
+            self.assertEqual(node["provenance"], [{"file": "a.csv", "row": 2}, {"file": "b.csv", "row": 2}])
+            self.assertEqual(node["conflicts"]["label"], ["Customer 1", "Customer One"])
 
     def test_missing_template_column_is_clear_error(self):
         with tempfile.TemporaryDirectory() as tmp:
