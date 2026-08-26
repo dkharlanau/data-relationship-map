@@ -12,23 +12,23 @@
 - file/sheet/row provenance
 - normalized identity collision diagnostics
 - conflicting metadata detection for repeated IDs
+- explicit relationship-cardinality policy
+- one-to-many / many-to-one ambiguity diagnostics
 - graph snapshot diff with relationship/orphan drift
 - realistic AFS -> MDG -> S/4 examples
 - unit tests and GitHub Actions CI
 
 ## Now — make investigations more diagnostic
 
-1. Detect ambiguous identity links and many-to-one / one-to-many anomalies.
-2. Add directed lineage/impact queries in addition to undirected path finding.
-3. Merge several crosswalk/partner/org extracts into one investigation model.
-4. Add deterministic severity/prioritization for relationship findings.
+1. Add directed lineage/impact queries in addition to undirected path finding.
+2. Merge several crosswalk/partner/org extracts into one investigation model.
+3. Add deterministic severity/prioritization for relationship findings.
 
 ## Next — investigation workbench
 
 - produce a concise investigation summary with source references
 - export a browser-ready graph for the shared enterprise graph explorer
-- configurable rules for relationship expectations
-- compare expected cardinality with observed relationships
+- compare expected cardinality with observed relationships across snapshots
 
 ## Later — ecosystem integration
 
