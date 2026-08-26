@@ -131,7 +131,7 @@ class XlsxAdapterTests(unittest.TestCase):
                 }],
             }
             model = build_model(manifest, base)
-            self.assertEqual(model["nodes"][0]["id"], "OBJ: AB-1 :DE01")
+            self.assertEqual(model["nodes"][0]["id"], "OBJ:AB-1:DE01")
 
     def test_missing_sheet_is_clear_error(self):
         with tempfile.TemporaryDirectory() as tmp:
