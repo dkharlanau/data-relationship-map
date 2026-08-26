@@ -21,7 +21,11 @@ Data Relationship Map makes that graph explicit, testable, and explainable back 
 - detect broken references, duplicate nodes/relationships, and orphans
 - enforce explicit relationship-cardinality policy such as 1:1 identity mappings
 - diagnose one-to-many and many-to-one ambiguity with the exact related IDs
-- find the shortest cross-system path between identifiers
+- find an undirected shortest cross-system identity path
+- traverse strict downstream lineage (`from -> to`)
+- traverse strict upstream lineage (`to -> from`)
+- stop impact traversal at configured system/object boundaries or maximum depth
+- preserve relationship type/provenance in lineage output
 - compare graph snapshots and report relationship/orphan drift
 - run the same checks automatically in GitHub Actions
 
@@ -33,6 +37,15 @@ Analyze a canonical graph:
 python relationship_map.py examples/customer-chain.json validate
 python relationship_map.py examples/customer-chain.json path AFS:4711 S4:10000891
 python relationship_policy.py examples/customer-chain.json examples/identity-policy.json
+```
+
+Directed lineage/impact:
+
+```bash
+python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream
+python relationship_lineage.py examples/customer-chain.json S4:10000891 --direction upstream
+python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream --stop-system MDG
+python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream --max-depth 1
 ```
 
 Build it from CSV:
@@ -63,6 +76,14 @@ Run tests:
 python -m unittest discover -s tests -v
 ```
 
+## Identity path vs directed lineage
+
+`relationship_map.py path` is intentionally symmetric: it answers **how are these two IDs connected?**
+
+`relationship_lineage.py` is directional: it answers **what can this object feed or affect downstream?** or **where could this object have come from upstream?** It never silently walks a relationship backward.
+
+The output includes one deterministic path from the start to every reached node, relationship types, available provenance, node depth, and any boundary where propagation stopped.
+
 ## Cardinality and ambiguity policy
 
 A graph can be structurally valid while still being suspicious. For example, a legacy customer may unexpectedly map to two target BPs, or two source IDs may converge into one target where the mapping is expected to be 1:1.
@@ -78,7 +99,7 @@ A graph can be structurally valid while still being suspicious. For example, a l
 }
 ```
 
-Rules are explicit per relationship type; relationships such as `ship_to` can remain unrestricted. The command exits non-zero when the configured policy is violated and returns the source/target IDs involved in each ambiguity.
+Rules are explicit per relationship type; relationships such as `ship_to` can remain unrestricted.
 
 ## Composite keys and normalization
 
@@ -139,9 +160,9 @@ Source-specific exports stay at the boundary while analysis remains reusable out
 
 ## Product direction
 
-1. Directed lineage and impact queries.
-2. Merge several crosswalk/partner/org extracts into one investigation model.
-3. Deterministic severity/prioritization for findings.
+1. Merge several crosswalk/partner/org extracts into one investigation model.
+2. Deterministic severity/prioritization for findings.
+3. Emit stable `eac://` artifact references for nodes/relationships/findings.
 4. Investigation summaries with source references.
 5. Export into the shared browser graph explorer.
 6. Reconciliation-as-Code integration for expected-vs-observed links.
@@ -154,6 +175,7 @@ Source-specific exports stay at the boundary while analysis remains reusable out
 - machine-readable
 - deterministic-first
 - provenance-preserving
+- explicit direction for lineage/impact
 - explicit normalization and relationship policy
 - Git-friendly
 - vendor-neutral where practical
@@ -173,4 +195,4 @@ Source-specific exports stay at the boundary while analysis remains reusable out
 
 ## Status
 
-**MVP / active development.** CSV/XLSX ingestion, composite keys, normalization, provenance, collision/cardinality diagnostics, graph validation, path analysis, snapshot drift, examples, tests, and CI are implemented.
+**MVP / active development.** CSV/XLSX ingestion, composite keys, normalization, provenance, collision/cardinality diagnostics, symmetric identity paths, directed lineage/impact, snapshot drift, examples, tests, and CI are implemented.
