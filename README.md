@@ -12,6 +12,8 @@ Data Relationship Map makes that graph explicit and testable.
 
 The repository now includes a zero-dependency Python engine that can:
 
+- ingest ordinary CSV exports through a small manifest
+- normalize them into a canonical graph
 - validate node and relationship definitions
 - detect broken references
 - detect duplicate nodes and duplicate relationships
@@ -21,19 +23,44 @@ The repository now includes a zero-dependency Python engine that can:
 
 ## Quick start
 
+Analyze the bundled canonical example:
+
 ```bash
 python relationship_map.py examples/customer-chain.json validate
 python relationship_map.py examples/customer-chain.json path AFS:4711 S4:10000891
+```
+
+Build the graph from an ordinary CSV crosswalk first:
+
+```bash
+python csv_adapter.py examples/csv/manifest.json --output customer-model.json
+python relationship_map.py customer-model.json validate
+python relationship_map.py customer-model.json path AFS:4711 S4:10000345
+```
+
+Run tests:
+
+```bash
 python -m unittest discover -s tests -v
 ```
 
-Expected path:
+## CSV manifest
 
-```text
-AFS:4711 -> MDG:7200311 -> S4:10000345 -> S4:10000891
+A manifest maps CSV columns into canonical nodes and relationships without hard-coding SAP field names into the graph engine.
+
+```json
+{
+  "node_sources": [
+    {"file": "customer_crosswalk.csv", "id": "AFS:{AFS_KUNNR}", "system": "AFS", "object": "customer"},
+    {"file": "customer_crosswalk.csv", "id": "MDG:{MDG_BP}", "system": "MDG", "object": "business-partner"}
+  ],
+  "relationship_sources": [
+    {"file": "customer_crosswalk.csv", "from": "AFS:{AFS_KUNNR}", "to": "MDG:{MDG_BP}", "type": "mapped_to"}
+  ]
+}
 ```
 
-The example intentionally contains an unlinked S/4 customer so the analysis also demonstrates orphan detection.
+This keeps source-specific exports at the boundary while the relationship engine remains vendor-neutral.
 
 ## Canonical model
 
@@ -49,17 +76,13 @@ The example intentionally contains an unlinked S/4 customer so the analysis also
 }
 ```
 
-The model is deliberately small. Source-specific Excel/CSV adapters can convert exports into this canonical representation without coupling the graph engine to SAP or any other platform.
-
 ## Product direction
 
-Next layers are:
-
-1. CSV/Excel adapters and configurable composite keys.
+1. Excel (`.xlsx`) adapter and configurable composite keys.
 2. Relationship confidence and provenance.
 3. Directed lineage and impact analysis.
 4. HTML/Graphviz explorer for GitHub Pages.
-5. Cross-file identity resolution.
+5. Cross-file identity resolution and merge diagnostics.
 6. Reconciliation-as-Code integration for expected-vs-observed links.
 7. Enterprise Change Graph integration for impact propagation.
 
@@ -88,4 +111,4 @@ Next layers are:
 
 ## Status
 
-**MVP / active development.** The canonical graph validator, path finder, example model, tests, and CI are implemented.
+**MVP / active development.** CSV ingestion, canonical graph validation, path finding, examples, tests, and CI are implemented.
