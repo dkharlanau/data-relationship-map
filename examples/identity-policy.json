@@ -1,0 +1,8 @@
+{
+  "relationship_rules": {
+    "mapped_to": {"max_outgoing": 1, "max_incoming": 1},
+    "replicated_to": {"max_outgoing": 1, "max_incoming": 1}
+  },
+  "report_identity_collisions": true,
+  "fail_on_identity_collisions": true
+}
