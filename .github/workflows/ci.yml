@@ -18,3 +18,7 @@ jobs:
       - run: python relationship_map.py /tmp/customer-model.json validate
       - run: python relationship_map.py /tmp/customer-model.json path AFS:4711 S4:10000345
       - run: python relationship_diff.py examples/customer-chain.json examples/customer-chain-after.json
+      - run: python examples/xlsx/make_sample.py examples/xlsx/customer_crosswalk.xlsx
+      - run: python xlsx_adapter.py examples/xlsx/manifest.json --output /tmp/customer-xlsx-model.json
+      - run: python relationship_map.py /tmp/customer-xlsx-model.json validate
+      - run: python relationship_map.py /tmp/customer-xlsx-model.json path AFS:4711 S4:10000345
