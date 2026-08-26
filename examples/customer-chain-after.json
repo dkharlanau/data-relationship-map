@@ -1,0 +1,15 @@
+{
+  "nodes": [
+    {"id": "AFS:4711", "system": "AFS", "object": "customer", "label": "Legacy Customer 4711"},
+    {"id": "MDG:7200311", "system": "MDG", "object": "business-partner", "label": "MDG BP 7200311"},
+    {"id": "S4:10000345", "system": "S4", "object": "business-partner", "label": "S/4 Business Partner 10000345"},
+    {"id": "S4:10000891", "system": "S4", "object": "customer", "label": "Ship-To 10000891"},
+    {"id": "S4:99999999", "system": "S4", "object": "customer", "label": "Previously Unlinked Customer"}
+  ],
+  "relationships": [
+    {"from": "AFS:4711", "to": "MDG:7200311", "type": "mapped_to"},
+    {"from": "MDG:7200311", "to": "S4:10000345", "type": "replicated_to"},
+    {"from": "S4:10000345", "to": "S4:10000891", "type": "ship_to"},
+    {"from": "S4:10000345", "to": "S4:99999999", "type": "bill_to"}
+  ]
+}
