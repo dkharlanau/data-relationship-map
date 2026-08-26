@@ -7,26 +7,28 @@
 - broken-reference, duplicate, and orphan detection
 - shortest cross-system identity path
 - CSV export adapter with manifest-driven field mapping
-- source file/row provenance
+- XLSX worksheet adapter with zero runtime dependencies
+- composite ID templates and explicit key normalization
+- file/sheet/row provenance
+- normalized identity collision diagnostics
 - conflicting metadata detection for repeated IDs
 - graph snapshot diff with relationship/orphan drift
 - realistic AFS -> MDG -> S/4 examples
 - unit tests and GitHub Actions CI
 
-## Now — make ordinary project exports useful
+## Now — make investigations more diagnostic
 
-1. Add `.xlsx` ingestion without changing the canonical model.
-2. Support composite identifiers and normalized key functions.
-3. Detect ambiguous identity links and many-to-one / one-to-many anomalies.
-4. Add directed lineage/impact queries in addition to undirected path finding.
-5. Merge several crosswalk/partner/org extracts into one investigation model.
+1. Detect ambiguous identity links and many-to-one / one-to-many anomalies.
+2. Add directed lineage/impact queries in addition to undirected path finding.
+3. Merge several crosswalk/partner/org extracts into one investigation model.
+4. Add deterministic severity/prioritization for relationship findings.
 
 ## Next — investigation workbench
 
-- prioritize orphan/broken/ambiguous objects by deterministic severity
 - produce a concise investigation summary with source references
 - export a browser-ready graph for the shared enterprise graph explorer
 - configurable rules for relationship expectations
+- compare expected cardinality with observed relationships
 
 ## Later — ecosystem integration
 
@@ -37,6 +39,6 @@
 
 ## Product test
 
-A consultant should be able to take ordinary project exports and answer, without writing custom code:
+A consultant should be able to take ordinary CSV/Excel project exports and answer, without writing custom code:
 
-> Where did this object come from, what is it linked to across systems, what changed, what is broken, and which source records should I investigate first?
+> Where did this object come from, what is it linked to across systems, what changed, what is ambiguous or broken, and which source records should I investigate first?
