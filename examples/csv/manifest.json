@@ -1,0 +1,11 @@
+{
+  "node_sources": [
+    {"file": "customer_crosswalk.csv", "id": "AFS:{AFS_KUNNR}", "system": "AFS", "object": "customer", "label": "AFS Customer {AFS_KUNNR}"},
+    {"file": "customer_crosswalk.csv", "id": "MDG:{MDG_BP}", "system": "MDG", "object": "business-partner", "label": "MDG BP {MDG_BP}"},
+    {"file": "customer_crosswalk.csv", "id": "S4:{S4_BP}", "system": "S4", "object": "business-partner", "label": "S/4 BP {S4_BP}"}
+  ],
+  "relationship_sources": [
+    {"file": "customer_crosswalk.csv", "from": "AFS:{AFS_KUNNR}", "to": "MDG:{MDG_BP}", "type": "mapped_to"},
+    {"file": "customer_crosswalk.csv", "from": "MDG:{MDG_BP}", "to": "S4:{S4_BP}", "type": "replicated_to"}
+  ]
+}
