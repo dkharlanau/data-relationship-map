@@ -17,3 +17,4 @@ jobs:
       - run: python csv_adapter.py examples/csv/manifest.json --output /tmp/customer-model.json
       - run: python relationship_map.py /tmp/customer-model.json validate
       - run: python relationship_map.py /tmp/customer-model.json path AFS:4711 S4:10000345
+      - run: python relationship_diff.py examples/customer-chain.json examples/customer-chain-after.json
