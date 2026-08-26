@@ -19,6 +19,8 @@ Data Relationship Map makes that graph explicit, testable, and explainable back 
 - expose normalized identity collisions instead of silently merging them
 - surface conflicting attributes when the same canonical ID has inconsistent metadata
 - detect broken references, duplicate nodes/relationships, and orphans
+- enforce explicit relationship-cardinality policy such as 1:1 identity mappings
+- diagnose one-to-many and many-to-one ambiguity with the exact related IDs
 - find the shortest cross-system path between identifiers
 - compare graph snapshots and report relationship/orphan drift
 - run the same checks automatically in GitHub Actions
@@ -30,6 +32,7 @@ Analyze a canonical graph:
 ```bash
 python relationship_map.py examples/customer-chain.json validate
 python relationship_map.py examples/customer-chain.json path AFS:4711 S4:10000891
+python relationship_policy.py examples/customer-chain.json examples/identity-policy.json
 ```
 
 Build it from CSV:
@@ -37,6 +40,7 @@ Build it from CSV:
 ```bash
 python csv_adapter.py examples/csv/manifest.json --output customer-model.json
 python relationship_map.py customer-model.json validate
+python relationship_policy.py customer-model.json examples/identity-policy.json
 ```
 
 Build it from XLSX. The repository generates a small synthetic workbook for the example/CI path:
@@ -58,6 +62,23 @@ Run tests:
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## Cardinality and ambiguity policy
+
+A graph can be structurally valid while still being suspicious. For example, a legacy customer may unexpectedly map to two target BPs, or two source IDs may converge into one target where the mapping is expected to be 1:1.
+
+```json
+{
+  "relationship_rules": {
+    "mapped_to": {"max_outgoing": 1, "max_incoming": 1},
+    "replicated_to": {"max_outgoing": 1, "max_incoming": 1}
+  },
+  "report_identity_collisions": true,
+  "fail_on_identity_collisions": true
+}
+```
+
+Rules are explicit per relationship type; relationships such as `ship_to` can remain unrestricted. The command exits non-zero when the configured policy is violated and returns the source/target IDs involved in each ambiguity.
 
 ## Composite keys and normalization
 
@@ -118,12 +139,13 @@ Source-specific exports stay at the boundary while analysis remains reusable out
 
 ## Product direction
 
-1. Many-to-one / one-to-many ambiguity diagnostics beyond normalization collisions.
-2. Directed lineage and impact queries.
-3. Multi-file investigation summaries and deterministic prioritization.
-4. Export into the shared browser graph explorer.
-5. Reconciliation-as-Code integration for expected-vs-observed links.
-6. Enterprise Change Graph integration for impact propagation.
+1. Directed lineage and impact queries.
+2. Merge several crosswalk/partner/org extracts into one investigation model.
+3. Deterministic severity/prioritization for findings.
+4. Investigation summaries with source references.
+5. Export into the shared browser graph explorer.
+6. Reconciliation-as-Code integration for expected-vs-observed links.
+7. Enterprise Change Graph integration for impact propagation.
 
 ## Design principles
 
@@ -132,7 +154,7 @@ Source-specific exports stay at the boundary while analysis remains reusable out
 - machine-readable
 - deterministic-first
 - provenance-preserving
-- explicit normalization
+- explicit normalization and relationship policy
 - Git-friendly
 - vendor-neutral where practical
 - synthetic examples safe to publish
@@ -151,4 +173,4 @@ Source-specific exports stay at the boundary while analysis remains reusable out
 
 ## Status
 
-**MVP / active development.** CSV/XLSX ingestion, composite keys, normalization, provenance, collision diagnostics, graph validation, path analysis, snapshot drift, examples, tests, and CI are implemented.
+**MVP / active development.** CSV/XLSX ingestion, composite keys, normalization, provenance, collision/cardinality diagnostics, graph validation, path analysis, snapshot drift, examples, tests, and CI are implemented.
