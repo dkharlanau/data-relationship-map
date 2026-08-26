@@ -1,21 +1,40 @@
 # Roadmap
 
-## Phase 1 — Core model
+## Done — usable MVP
 
-Define the canonical structured representation and its schema.
+- canonical node/relationship model
+- deterministic validation
+- broken-reference, duplicate, and orphan detection
+- shortest cross-system identity path
+- CSV export adapter with manifest-driven field mapping
+- realistic AFS -> MDG -> S/4 example
+- unit tests and GitHub Actions CI
 
-## Phase 2 — Validation
+## Now — make ordinary project exports useful
 
-Add deterministic validation rules and test fixtures.
+1. Add `.xlsx` ingestion without changing the canonical model.
+2. Support composite identifiers and normalized key functions.
+3. Preserve provenance for every node/relationship: source file, row, column, timestamp.
+4. Detect ambiguous identity links and many-to-one / one-to-many anomalies.
+5. Add directed lineage/impact queries in addition to undirected path finding.
 
-## Phase 3 — Visualization
+## Next — investigation workbench
 
-Add human-readable visual views and generated documentation.
+- merge several crosswalk/partner/org extracts into one model
+- compare two graph snapshots and explain relationship drift
+- output reconciliation findings in machine-readable JSON
+- generate an investigation summary for orphan/broken/ambiguous objects
+- export a browser-ready graph for the shared enterprise graph explorer
 
-## Phase 4 — Interoperability
+## Later — ecosystem integration
 
-Add import/export to relevant open standards and common project formats.
+- Mapping as Code: derive mapping relationships
+- Reconciliation as Code: expected-vs-observed relationship controls
+- Enterprise Change Graph: impact propagation
+- Project Evidence Graph: link findings to defects, changes, tests, and evidence
 
-## Phase 5 — Automation
+## Product test
 
-Add CLI, CI integration, and machine-facing outputs where useful.
+A consultant should be able to take ordinary project exports and answer, without writing custom code:
+
+> Where did this object come from, what is it linked to across systems, what is broken, and which records should I investigate first?
