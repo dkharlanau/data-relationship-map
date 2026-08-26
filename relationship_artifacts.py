@@ -19,8 +19,45 @@ def artifact_ref(kind: str, *segments: str) -> str:
     return f"eac://dkharlanau/data-relationship-map/{quote(kind, safe='._-')}/{encoded}"
 
 
-def build_index(model: dict[str, Any], policy: dict[str, Any] | None = None) -> dict[str, Any]:
+def _validation_contract(model: dict[str, Any]) -> dict[str, Any]:
+    """Preserve the current analyzer fields and the stable artifact-level aliases."""
     validation = analyze(model)
+    if "broken_references" not in validation:
+        validation = {
+            **validation,
+            "broken_references": validation.get("broken_relationships", []),
+        }
+    return validation
+
+
+def _cardinality_violations(policy_result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Accept both the original artifact contract and the current policy evaluator shape."""
+    raw = policy_result.get("violations")
+    if raw is None:
+        raw = policy_result.get("cardinality_violations", [])
+
+    normalized = []
+    for violation in raw:
+        direction = violation.get("direction")
+        if not direction:
+            kind = str(violation.get("kind", ""))
+            if kind.startswith("outgoing_"):
+                direction = "outgoing"
+            elif kind.startswith("incoming_"):
+                direction = "incoming"
+            else:
+                direction = "unknown"
+        normalized.append({
+            **violation,
+            "direction": direction,
+            "allowed": violation.get("allowed", violation.get("maximum")),
+            "related": violation.get("related", violation.get("related_ids", [])),
+        })
+    return normalized
+
+
+def build_index(model: dict[str, Any], policy: dict[str, Any] | None = None) -> dict[str, Any]:
+    validation = _validation_contract(model)
     node_refs: dict[str, str] = {}
     objects = []
     for node in sorted(model.get("nodes", []), key=lambda item: str(item.get("id", ""))):
@@ -69,7 +106,7 @@ def build_index(model: dict[str, Any], policy: dict[str, Any] | None = None) -> 
     policy_result = evaluate_policy(model, policy) if policy is not None else None
     findings = []
     if policy_result is not None:
-        for violation in policy_result.get("violations", []):
+        for violation in _cardinality_violations(policy_result):
             finding_ref = artifact_ref(
                 "finding",
                 "cardinality",
