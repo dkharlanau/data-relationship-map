@@ -33,6 +33,14 @@ def _merge_node(nodes: dict[str, dict[str, Any]], candidate: dict[str, Any], sou
 
     node = nodes[node_id]
     node.setdefault("provenance", []).append(source_ref)
+
+    raw_identities = {
+        str(ref.get("raw_identity") or node_id)
+        for ref in node.get("provenance", [])
+    }
+    if len(raw_identities) > 1:
+        node["identity_collisions"] = sorted(raw_identities)
+
     conflicts = node.setdefault("conflicts", {})
     for field in ("system", "object", "label"):
         old = str(node.get(field, "")).strip()
