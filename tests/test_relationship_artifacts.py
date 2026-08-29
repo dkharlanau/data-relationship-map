@@ -1,6 +1,6 @@
 import unittest
 
-from relationship_artifacts import artifact_ref, build_index
+from relationship_artifacts import artifact_ref, build_index, normalize_observed_at
 
 
 class RelationshipArtifactTests(unittest.TestCase):
@@ -25,6 +25,32 @@ class RelationshipArtifactTests(unittest.TestCase):
         self.assertEqual(relation["artifact_ref"], "eac://dkharlanau/data-relationship-map/relationship/AFS:4711/mapped_to/MDG:7200311")
         self.assertEqual(relation["from_ref"], objects["AFS:4711"]["artifact_ref"])
         self.assertEqual(relation["to_ref"], objects["MDG:7200311"]["artifact_ref"])
+
+    def test_observed_at_is_explicit_and_canonicalized(self):
+        index = build_index(self.model, observed_at="2026-08-25T12:00:00+02:00")
+        self.assertEqual(index["observed_at"], "2026-08-25T10:00:00Z")
+
+    def test_model_observed_at_is_used_when_call_does_not_override_it(self):
+        model = {**self.model, "observed_at": "2026-08-25T10:00:00Z"}
+        index = build_index(model)
+        self.assertEqual(index["observed_at"], "2026-08-25T10:00:00Z")
+
+    def test_call_observed_at_overrides_model_value(self):
+        model = {**self.model, "observed_at": "2026-08-20T10:00:00Z"}
+        index = build_index(model, observed_at="2026-08-25T10:00:00Z")
+        self.assertEqual(index["observed_at"], "2026-08-25T10:00:00Z")
+
+    def test_missing_observed_at_remains_backward_compatible(self):
+        index = build_index(self.model)
+        self.assertNotIn("observed_at", index)
+
+    def test_naive_observed_at_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "timezone"):
+            build_index(self.model, observed_at="2026-08-25T10:00:00")
+
+    def test_invalid_observed_at_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "ISO-8601"):
+            normalize_observed_at("not-a-time")
 
     def test_source_location_remains_provenance_not_identity(self):
         first = build_index(self.model)
