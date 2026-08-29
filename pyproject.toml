@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data-relationship-map"
+version = "0.1.0"
+description = "Cross-system identity and lineage investigations from ordinary CSV/XLSX enterprise exports."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Dzmitryi Kharlanau" }]
+keywords = [
+  "data-lineage",
+  "identity",
+  "crosswalk",
+  "enterprise-data",
+  "data-migration",
+  "sap",
+  "excel",
+  "csv",
+  "graph",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Database",
+]
+
+[project.urls]
+Homepage = "https://dkharlanau.github.io/data-relationship-map/"
+Repository = "https://github.com/dkharlanau/data-relationship-map"
+Issues = "https://github.com/dkharlanau/data-relationship-map/issues"
+Portfolio = "https://dkharlanau.github.io/products/"
+
+[project.scripts]
+data-relationship-map = "drm_cli:main"
+
+[tool.setuptools]
+py-modules = [
+  "csv_adapter",
+  "drm_cli",
+  "relationship_artifacts",
+  "relationship_diff",
+  "relationship_lineage",
+  "relationship_map",
+  "relationship_policy",
+  "xlsx_adapter",
+]
