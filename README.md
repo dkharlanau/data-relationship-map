@@ -6,7 +6,7 @@ Data Relationship Map turns implicit relationships between legacy IDs, business 
 
 It is designed for the practical investigation question:
 
-> **How is this object connected across systems, where did the relationship come from, what is ambiguous or broken, and what can this object affect downstream?**
+> **How is this object connected across systems, where did the relationship come from, what is ambiguous or broken, what can it affect downstream, and when was that relationship state actually observed?**
 
 ## Try it
 
@@ -21,6 +21,27 @@ data-relationship-map policy examples/customer-chain.json examples/identity-poli
 ```
 
 The installed command is a thin dispatcher over the same deterministic modules used by CI. Existing `python relationship_*.py ...` workflows remain supported.
+
+## Start with one investigation report
+
+The primary review surface combines structural diagnostics, explicit identity/cardinality policy, bounded upstream/downstream lineage and source provenance:
+
+```bash
+data-relationship-map investigate examples/customer-chain.json \
+  --policy examples/identity-policy.json \
+  --focus AFS:4711 \
+  --json-output build/investigation.json \
+  --markdown build/investigation.md
+```
+
+The status is deterministic:
+
+- `clear` — no structural or supplied-policy findings;
+- `findings` — graph is usable but has investigation findings such as orphans or cardinality violations;
+- `invalid_model` — structural contract is broken;
+- `invalid_focus` — requested focus object does not exist.
+
+The report does not infer relationships that are absent from the supplied model.
 
 ## Build the graph from exports
 
@@ -101,19 +122,29 @@ data-relationship-map policy examples/customer-chain.json \
 
 Policy output identifies the exact related IDs behind one-to-many or many-to-one ambiguity rather than reducing the problem to a generic validation error.
 
-## Stable investigation artifacts
+## Stable, freshness-aware investigation artifacts
 
-Objects, relationships and policy findings can be exposed through stable logical references:
+Objects, relationships and policy findings can be exposed through stable logical references for downstream assurance:
 
 ```bash
 data-relationship-map artifacts examples/customer-chain.json \
   --policy examples/identity-policy.json \
+  --observed-at 2026-08-25T10:00:00Z \
   --output build/relationship-artifacts.json
 ```
 
-The artifact index uses producer-owned `eac://` identities and retains source provenance. These are logical references, not network URLs or trust assertions; downstream assurance tools must bind them explicitly.
+`observed_at` is explicit and timezone-aware. The tool never substitutes the current wall-clock time. If the input model already contains `observed_at`, that value is used unless the CLI argument explicitly overrides it.
 
-This makes findings reusable without copying Data Relationship Map's semantic ownership into another repository.
+The artifact index uses producer-owned `eac://` identities and retains source provenance. These are logical references, not network URLs or trust assertions. Downstream tools must bind them explicitly.
+
+Project Evidence Graph can import the index while preserving observation time:
+
+```bash
+project-evidence-graph import-relationship build/relationship-artifacts.json \
+  --output build/project-relationship-evidence.json
+```
+
+A failed Data Relationship policy is not a broken import contract—the findings are the evidence. Missing observation time remains possible for backward compatibility, but a strict downstream freshness policy can and should reject undated evidence.
 
 ## Compare relationship state over time
 
@@ -142,8 +173,11 @@ The diff reports relationship and orphan drift so an investigation can distingui
 - symmetric shortest identity path;
 - strict downstream and upstream lineage;
 - system/object and max-depth traversal boundaries;
+- consolidated JSON/Markdown investigation report;
 - snapshot relationship/orphan drift;
 - stable `eac://` references for objects, relationships and findings;
+- explicit timezone-aware observation time for exported assurance artifacts;
+- tested Project Evidence Graph consumption contract;
 - installable `data-relationship-map` command;
 - unit tests and installed-CLI smoke tests in GitHub Actions.
 
@@ -167,6 +201,7 @@ Normalization is explicit rather than automatic. If two raw identities normalize
 
 ```json
 {
+  "observed_at": "2026-08-25T10:00:00Z",
   "nodes": [
     {
       "id": "AFS:4711",
@@ -194,9 +229,9 @@ Normalization is explicit rather than automatic. If two raw identities normalize
 
 ## Ownership boundary
 
-Data Relationship Map owns the **observed identity/relationship model and findings derived from supplied exports**. It does not become the authoring home for Mapping-as-Code transformation intent, Reconciliation-as-Code controls, or Enterprise Change Graph propagation rules.
+Data Relationship Map owns the **observed identity/relationship model, observation time, and findings derived from supplied exports**. It does not become the authoring home for Mapping-as-Code transformation intent, Reconciliation-as-Code controls, Project Evidence Graph assurance relationships, or Enterprise Change Graph propagation rules.
 
-The next product step is one consolidated investigation decision surface: structural findings + identity/cardinality policy + bounded lineage + exact source provenance in one reviewer-friendly report. See [ROADMAP.md](ROADMAP.md).
+The next product step is a bounded integrity-checkable handoff plus explicit finding lifecycle/severity policy. See [ROADMAP.md](ROADMAP.md).
 
 ## Related projects
 
@@ -211,4 +246,4 @@ Portfolio map: https://dkharlanau.github.io/products/
 
 ## Status
 
-**Executable MVP / active development.** Multi-source CSV/XLSX ingestion, explicit normalization, provenance, collision/cardinality diagnostics, identity paths, directional lineage, stable artifact references, snapshot drift, installed CLI, tests and CI are implemented.
+**Executable MVP / active development, v0.2.0.** Multi-source CSV/XLSX ingestion, explicit normalization, provenance, collision/cardinality diagnostics, identity paths, directional lineage, consolidated investigation reports, freshness-aware stable artifacts, snapshot drift, installed CLI, tests and CI are implemented.
