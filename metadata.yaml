@@ -4,33 +4,48 @@ owner: dkharlanau
 visibility: public
 
 portfolio:
-  rank: 8
+  layer: foundation
+  role: cross-system-identity-lineage
   utility_today: 10
   growth_potential: 9
   sap_proof: 10
   brand_value: 9
 
-status: planning
+status: executable-mvp
+version: 0.1.0
 
 implementation:
   repository_created: true
-  implementation_status: not-started
-  codex_fit: 5/5
+  implementation_status: executable
+  installable_package: true
+  console_command: data-relationship-map
+  csv_ingestion: true
+  xlsx_ingestion: true
+  identity_path: true
+  directional_lineage: true
+  cardinality_policy: true
+  stable_eac_artifacts: true
+  snapshot_diff: true
+  test_suite: true
+  ci: true
   sap_access_required: false
 
 principles:
+  - deterministic-first
+  - provenance-preserving
+  - explicit-normalization
+  - fail-loud-identity-collisions
   - versionable
   - portable
   - machine-readable
-  - deterministic-first
-  - visual
   - git-friendly
   - interoperable
 
 primary_users:
   - SAP consultants
-  - enterprise architects
+  - migration consultants
   - data consultants
+  - master-data teams
   - integration consultants
-  - business analysts
+  - enterprise architects
   - transformation teams
