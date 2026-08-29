@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -17,6 +18,21 @@ from relationship_policy import load_policy
 def artifact_ref(kind: str, *segments: str) -> str:
     encoded = "/".join(quote(str(segment), safe="._-:@") for segment in segments)
     return f"eac://dkharlanau/data-relationship-map/{quote(kind, safe='._-')}/{encoded}"
+
+
+def normalize_observed_at(value: Any) -> str | None:
+    """Return a canonical UTC observation timestamp without consulting wall-clock time."""
+    if value is None or str(value).strip() == "":
+        return None
+    text = str(value).strip()
+    parse_text = text[:-1] + "+00:00" if text.endswith("Z") else text
+    try:
+        parsed = datetime.fromisoformat(parse_text)
+    except ValueError as exc:
+        raise ValueError(f"observed_at must be valid ISO-8601: {value!r}") from exc
+    if parsed.tzinfo is None:
+        raise ValueError("observed_at must include a timezone")
+    return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _validation_contract(model: dict[str, Any]) -> dict[str, Any]:
@@ -56,8 +72,13 @@ def _cardinality_violations(policy_result: dict[str, Any]) -> list[dict[str, Any
     return normalized
 
 
-def build_index(model: dict[str, Any], policy: dict[str, Any] | None = None) -> dict[str, Any]:
+def build_index(
+    model: dict[str, Any],
+    policy: dict[str, Any] | None = None,
+    observed_at: Any = None,
+) -> dict[str, Any]:
     validation = _validation_contract(model)
+    observation = normalize_observed_at(observed_at if observed_at is not None else model.get("observed_at"))
     node_refs: dict[str, str] = {}
     objects = []
     for node in sorted(model.get("nodes", []), key=lambda item: str(item.get("id", ""))):
@@ -139,7 +160,7 @@ def build_index(model: dict[str, Any], policy: dict[str, Any] | None = None) -> 
             })
 
     findings.sort(key=lambda item: item["artifact_ref"])
-    return {
+    result = {
         "schema_version": "0.1",
         "repository": "dkharlanau/data-relationship-map",
         "valid": bool(validation["valid"]),
@@ -150,16 +171,30 @@ def build_index(model: dict[str, Any], policy: dict[str, Any] | None = None) -> 
         "relationships": relationships,
         "findings": findings,
     }
+    if observation is not None:
+        result["observed_at"] = observation
+    return result
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Emit stable eac:// artifacts from Data Relationship Map")
     parser.add_argument("model")
     parser.add_argument("--policy")
+    parser.add_argument(
+        "--observed-at",
+        help="Explicit ISO-8601 time when the supplied exports/model were observed; must include timezone",
+    )
     parser.add_argument("--output", "-o")
     args = parser.parse_args()
 
-    index = build_index(load_model(args.model), load_policy(args.policy) if args.policy else None)
+    try:
+        index = build_index(
+            load_model(args.model),
+            load_policy(args.policy) if args.policy else None,
+            observed_at=args.observed_at,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
     payload = json.dumps(index, indent=2)
     if args.output:
         Path(args.output).write_text(payload + "\n", encoding="utf-8")
