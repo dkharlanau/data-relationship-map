@@ -20,19 +20,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m unittest discover -s tests -v
-      - run: python relationship_map.py examples/customer-chain.json validate
-      - run: python relationship_policy.py examples/customer-chain.json examples/identity-policy.json
-      - run: python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream
-      - run: python relationship_lineage.py examples/customer-chain.json S4:10000891 --direction upstream
-      - run: python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream --stop-system MDG
-      - run: python csv_adapter.py examples/csv/manifest.json --output /tmp/customer-model.json
-      - run: python relationship_map.py /tmp/customer-model.json validate
-      - run: python relationship_map.py /tmp/customer-model.json path AFS:4711 S4:10000345
-      - run: python relationship_policy.py /tmp/customer-model.json examples/identity-policy.json
-      - run: python relationship_diff.py examples/customer-chain.json examples/customer-chain-after.json
-      - run: python examples/xlsx/make_sample.py examples/xlsx/customer_crosswalk.xlsx
-      - run: python xlsx_adapter.py examples/xlsx/manifest.json --output /tmp/customer-xlsx-model.json
-      - run: python relationship_map.py /tmp/customer-xlsx-model.json validate
-      - run: python relationship_map.py /tmp/customer-xlsx-model.json path AFS:4711 S4:10000345
-      - run: python relationship_policy.py /tmp/customer-xlsx-model.json examples/identity-policy.json
+      - name: Install package
+        run: python -m pip install .
+      - name: Test suite
+        run: python -m unittest discover -s tests -v
+      - name: Installed CLI smoke tests
+        run: |
+          data-relationship-map --help
+          data-relationship-map validate examples/customer-chain.json
+          data-relationship-map path examples/customer-chain.json AFS:4711 S4:10000891
+          data-relationship-map lineage examples/customer-chain.json AFS:4711 --direction downstream
+          data-relationship-map artifacts examples/customer-chain.json \
+            --policy examples/identity-policy.json \
+            --output /tmp/relationship-artifacts.json
+          test -s /tmp/relationship-artifacts.json
+      - name: Backwards-compatible module workflows
+        run: |
+          python relationship_map.py examples/customer-chain.json validate
+          python relationship_policy.py examples/customer-chain.json examples/identity-policy.json
+          python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream
+          python relationship_lineage.py examples/customer-chain.json S4:10000891 --direction upstream
+          python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream --stop-system MDG
+          python csv_adapter.py examples/csv/manifest.json --output /tmp/customer-model.json
+          python relationship_map.py /tmp/customer-model.json validate
+          python relationship_map.py /tmp/customer-model.json path AFS:4711 S4:10000345
+          python relationship_policy.py /tmp/customer-model.json examples/identity-policy.json
+          python relationship_diff.py examples/customer-chain.json examples/customer-chain-after.json
+          python examples/xlsx/make_sample.py examples/xlsx/customer_crosswalk.xlsx
+          python xlsx_adapter.py examples/xlsx/manifest.json --output /tmp/customer-xlsx-model.json
+          python relationship_map.py /tmp/customer-xlsx-model.json validate
+          python relationship_map.py /tmp/customer-xlsx-model.json path AFS:4711 S4:10000345
+          python relationship_policy.py /tmp/customer-xlsx-model.json examples/identity-policy.json
