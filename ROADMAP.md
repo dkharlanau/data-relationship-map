@@ -22,15 +22,18 @@
 - stable `eac://` references for objects, relationships, and policy findings
 - machine-readable artifact index with preserved source provenance
 - installable Python package and unified `data-relationship-map` command
+- consolidated `investigate` report combining structural findings, supplied identity/cardinality policy, bounded upstream/downstream lineage and provenance
+- deterministic JSON and reviewer-readable Markdown investigation output
+- fail-loud investigation statuses: `clear`, `findings`, `invalid_model`, `invalid_focus`
 - realistic AFS → MDG → S/4 examples
 - unit tests and GitHub Actions CI, including installed-CLI smoke tests
 
-## Now — investigation decision surface
+## Now — bounded handoff and finding policy
 
-1. Produce one concise investigation report that combines structural validation, identity/cardinality findings, lineage context, provenance and source rows.
-2. Add deterministic prioritization for findings based on explicit policy rather than hidden scores.
-3. Package a bounded upstream/downstream subgraph with stable references for another tool or agent.
-4. Generate a browser-ready investigation view from the same bounded model rather than maintaining a separate visualization model.
+1. Package the selected upstream/downstream investigation context as a bounded, integrity-checkable subgraph for another tool or agent.
+2. Add explicit deterministic finding severity/prioritization policy instead of introducing an opaque score.
+3. Give findings a review lifecycle (`open`, `accepted`, `resolved`, `superseded`) without rewriting historical evidence.
+4. Generate a browser-ready investigation view from the same bounded report rather than maintaining a second visualization model.
 
 ## Next — ecosystem integration
 
@@ -44,7 +47,7 @@
 
 - compare expected cardinality with observed relationships across multiple snapshots
 - freshness/authority metadata for imported extracts
-- explicit resolution lifecycle for findings rather than treating every historical anomaly as currently open
+- explicit resolution lifecycle across repeated imports and snapshots
 - optional adapters for governed source systems when repeated real investigations justify them
 
 ## Product test
