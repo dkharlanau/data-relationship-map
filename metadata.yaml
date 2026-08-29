@@ -12,7 +12,7 @@ portfolio:
   brand_value: 9
 
 status: executable-mvp
-version: 0.1.0
+version: 0.2.0
 
 implementation:
   repository_created: true
@@ -26,6 +26,11 @@ implementation:
   cardinality_policy: true
   stable_eac_artifacts: true
   snapshot_diff: true
+  investigation_report: true
+  investigation_json: true
+  investigation_markdown: true
+  bounded_lineage_context: true
+  provenance_investigation_refs: true
   test_suite: true
   ci: true
   sap_access_required: false
@@ -34,7 +39,7 @@ principles:
   - deterministic-first
   - provenance-preserving
   - explicit-normalization
-  - fail-loud-identity-collisions
+  - fail-loud-findings
   - versionable
   - portable
   - machine-readable
