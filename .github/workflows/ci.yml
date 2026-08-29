@@ -32,8 +32,10 @@ jobs:
           data-relationship-map lineage examples/customer-chain.json AFS:4711 --direction downstream
           data-relationship-map artifacts examples/customer-chain.json \
             --policy examples/identity-policy.json \
+            --observed-at 2026-08-25T10:00:00Z \
             --output /tmp/relationship-artifacts.json
           test -s /tmp/relationship-artifacts.json
+          grep -q '"observed_at": "2026-08-25T10:00:00Z"' /tmp/relationship-artifacts.json
 
           # customer-chain intentionally has an orphan. The graph is structurally
           # valid, but the investigation must return findings and reviewer artifacts.
