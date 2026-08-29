@@ -25,6 +25,9 @@ implementation:
   directional_lineage: true
   cardinality_policy: true
   stable_eac_artifacts: true
+  explicit_observed_at: true
+  timezone_aware_observation_time: true
+  project_evidence_consumption_contract: true
   snapshot_diff: true
   investigation_report: true
   investigation_json: true
@@ -39,6 +42,7 @@ principles:
   - deterministic-first
   - provenance-preserving
   - explicit-normalization
+  - explicit-observation-time
   - fail-loud-findings
   - versionable
   - portable
