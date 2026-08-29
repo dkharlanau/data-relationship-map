@@ -57,7 +57,14 @@ def _source_references(
             owner = f"{edge.get('from', '')}->{edge.get('to', '')}:{edge.get('type', 'related_to')}"
             add(f"{direction}_relationship", owner, edge.get("provenance"))
 
-    return sorted(refs, key=lambda item: (item["kind"], item["owner"], json.dumps(item["provenance"], sort_keys=True, default=str)))
+    return sorted(
+        refs,
+        key=lambda item: (
+            item["kind"],
+            item["owner"],
+            json.dumps(item["provenance"], sort_keys=True, default=str),
+        ),
+    )
 
 
 def build_investigation(
@@ -71,6 +78,19 @@ def build_investigation(
 ) -> dict[str, Any]:
     structural = analyze(model)
     policy_result = evaluate(model, policy) if policy is not None else None
+
+    structural_finding_count = (
+        len(structural.get("duplicate_nodes", []))
+        + len(structural.get("duplicate_relationships", []))
+        + len(structural.get("broken_relationships", []))
+        + len(structural.get("orphans", []))
+    )
+    policy_finding_count = 0
+    if policy_result is not None:
+        policy_finding_count = (
+            len(policy_result.get("cardinality_violations", []))
+            + len(policy_result.get("identity_collisions", []))
+        )
 
     focus_node = _node_by_id(model, focus) if focus else None
     if focus and focus_node is None:
@@ -104,23 +124,10 @@ def build_investigation(
         )
         if not structural["valid"]:
             status = "invalid_model"
-        elif policy_result is not None and not policy_result["passed"]:
+        elif structural_finding_count or policy_finding_count:
             status = "findings"
         else:
             status = "clear"
-
-    structural_finding_count = (
-        len(structural.get("duplicate_nodes", []))
-        + len(structural.get("duplicate_relationships", []))
-        + len(structural.get("broken_relationships", []))
-        + len(structural.get("orphans", []))
-    )
-    policy_finding_count = 0
-    if policy_result is not None:
-        policy_finding_count = (
-            len(policy_result.get("cardinality_violations", []))
-            + len(policy_result.get("identity_collisions", []))
-        )
 
     focus_summary = None
     if focus:
@@ -268,7 +275,10 @@ def main() -> int:
 
     if args.json_output:
         Path(args.json_output).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.json_output).write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        Path(args.json_output).write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
     if args.markdown:
         Path(args.markdown).parent.mkdir(parents=True, exist_ok=True)
         Path(args.markdown).write_text(render_markdown(report), encoding="utf-8")
