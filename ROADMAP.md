@@ -1,6 +1,6 @@
 # Roadmap
 
-## Done — usable MVP
+## Done — usable investigation MVP
 
 - canonical node/relationship model
 - deterministic validation
@@ -11,6 +11,7 @@
 - provenance-preserving lineage edges and deterministic paths
 - CSV export adapter with manifest-driven field mapping
 - XLSX worksheet adapter with zero runtime dependencies
+- multi-source manifests that merge several crosswalk/partner/org extracts into one canonical investigation model
 - composite ID templates and explicit key normalization
 - file/sheet/row provenance
 - normalized identity collision diagnostics
@@ -18,31 +19,36 @@
 - explicit relationship-cardinality policy
 - one-to-many / many-to-one ambiguity diagnostics
 - graph snapshot diff with relationship/orphan drift
-- realistic AFS -> MDG -> S/4 examples
-- unit tests and GitHub Actions CI
+- stable `eac://` references for objects, relationships, and policy findings
+- machine-readable artifact index with preserved source provenance
+- installable Python package and unified `data-relationship-map` command
+- realistic AFS → MDG → S/4 examples
+- unit tests and GitHub Actions CI, including installed-CLI smoke tests
 
-## Now — make investigations composable
+## Now — investigation decision surface
 
-1. Merge several crosswalk/partner/org extracts into one investigation model.
-2. Add deterministic severity/prioritization for relationship findings.
-3. Emit stable `eac://` artifact references for nodes, relationships, and findings.
+1. Produce one concise investigation report that combines structural validation, identity/cardinality findings, lineage context, provenance and source rows.
+2. Add deterministic prioritization for findings based on explicit policy rather than hidden scores.
+3. Package a bounded upstream/downstream subgraph with stable references for another tool or agent.
+4. Generate a browser-ready investigation view from the same bounded model rather than maintaining a separate visualization model.
 
-## Next — investigation workbench
+## Next — ecosystem integration
 
-- produce a concise investigation summary with source references
-- export a browser-ready graph for the shared enterprise graph explorer
-- compare expected cardinality with observed relationships across snapshots
-- package a bounded upstream/downstream subgraph for another agent/tool
+- emit Project Evidence Graph fragments so relationship findings can link to defects, changes, tests and evidence
+- let Reconciliation as Code consume expected identity/cardinality relationships as explicit controls
+- let Enterprise Change Graph consume bounded directional lineage as change-impact evidence
+- derive relationship edges from Mapping as Code without copying mapping ownership into this repository
+- expose the same investigation summary through the shared Visual Workbench rendering boundary
 
-## Later — ecosystem integration
+## Later — operational investigation
 
-- Mapping as Code: derive mapping relationships
-- Reconciliation as Code: expected-vs-observed relationship controls
-- Enterprise Change Graph: impact propagation
-- Project Evidence Graph: link findings to defects, changes, tests, and evidence
+- compare expected cardinality with observed relationships across multiple snapshots
+- freshness/authority metadata for imported extracts
+- explicit resolution lifecycle for findings rather than treating every historical anomaly as currently open
+- optional adapters for governed source systems when repeated real investigations justify them
 
 ## Product test
 
 A consultant should be able to take ordinary CSV/Excel project exports and answer, without writing custom code:
 
-> Where did this object come from, what can it affect downstream, what changed, what is ambiguous or broken, and which source records should I investigate first?
+> Where did this object come from, what can it affect downstream, what changed, what is ambiguous or broken, which source records prove that conclusion, which findings matter first, and what bounded evidence should be handed to the next assurance or change-analysis tool?
