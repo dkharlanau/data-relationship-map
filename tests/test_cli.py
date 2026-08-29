@@ -11,6 +11,7 @@ class UnifiedCliTests(unittest.TestCase):
         with redirect_stdout(output):
             result = drm_cli.main(["--help"])
         self.assertEqual(result, 0)
+        self.assertIn("investigate", output.getvalue())
         self.assertIn("lineage", output.getvalue())
         self.assertIn("artifacts", output.getvalue())
 
@@ -28,6 +29,22 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertIn("AFS:4711", output.getvalue())
         self.assertIn("S4:10000891", output.getvalue())
+
+    def test_investigate_dispatches_to_report(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            result = drm_cli.main([
+                "investigate",
+                "examples/customer-chain.json",
+                "--policy",
+                "examples/identity-policy.json",
+                "--focus",
+                "AFS:4711",
+            ])
+        # The example deliberately contains an orphan, so the report fails loud as invalid_model.
+        self.assertEqual(result, 1)
+        self.assertIn('"status": "invalid_model"', output.getvalue())
+        self.assertIn('"focus": "AFS:4711"', output.getvalue())
 
     def test_unknown_command_fails_loudly(self):
         error = io.StringIO()
