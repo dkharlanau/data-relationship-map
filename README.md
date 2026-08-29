@@ -1,92 +1,87 @@
 # Data Relationship Map
 
-Turn ordinary enterprise exports into a traceable cross-system relationship graph for identity, linkage, lineage, and broken-reference investigations.
+**Cross-system identity and lineage investigations from ordinary CSV/XLSX enterprise exports.**
 
-## Why this exists
+Data Relationship Map turns implicit relationships between legacy IDs, business partners, customers, suppliers, organizational assignments and other business objects into a deterministic graph with source-row provenance.
 
-Enterprise data investigations often start with several Excel/CSV extracts and a deceptively simple question: **how is this object related across systems?** Customer IDs, BP IDs, partner functions, organizational assignments, suppliers, materials, and legacy identifiers quickly become an implicit graph that is hard to inspect and easy to break.
+It is designed for the practical investigation question:
 
-Data Relationship Map makes that graph explicit, testable, and explainable back to the source export.
+> **How is this object connected across systems, where did the relationship come from, what is ambiguous or broken, and what can this object affect downstream?**
 
-## Current capabilities
+## Try it
 
-- ingest CSV and `.xlsx` exports through small manifests
-- read XLSX worksheets using the Python standard library; no Excel runtime dependency
-- build composite IDs directly from columns
-- apply explicit normalization rules: `strip`, `upper`, `lower`, `strip_leading_zeros`
-- normalize into a vendor-neutral canonical graph
-- preserve file/sheet/row provenance
-- expose normalized identity collisions instead of silently merging them
-- surface conflicting attributes when the same canonical ID has inconsistent metadata
-- detect broken references, duplicate nodes/relationships, and orphans
-- enforce explicit relationship-cardinality policy such as 1:1 identity mappings
-- diagnose one-to-many and many-to-one ambiguity with the exact related IDs
-- find an undirected shortest cross-system identity path
-- traverse strict downstream lineage (`from -> to`)
-- traverse strict upstream lineage (`to -> from`)
-- stop impact traversal at configured system/object boundaries or maximum depth
-- preserve relationship type/provenance in lineage output
-- compare graph snapshots and report relationship/orphan drift
-- run the same checks automatically in GitHub Actions
-
-## Quick start
-
-Analyze a canonical graph:
+Requires Python 3.10+.
 
 ```bash
-python relationship_map.py examples/customer-chain.json validate
-python relationship_map.py examples/customer-chain.json path AFS:4711 S4:10000891
-python relationship_policy.py examples/customer-chain.json examples/identity-policy.json
+python -m pip install .
+
+data-relationship-map validate examples/customer-chain.json
+data-relationship-map path examples/customer-chain.json AFS:4711 S4:10000891
+data-relationship-map policy examples/customer-chain.json examples/identity-policy.json
 ```
 
-Directed lineage/impact:
+The installed command is a thin dispatcher over the same deterministic modules used by CI. Existing `python relationship_*.py ...` workflows remain supported.
+
+## Build the graph from exports
+
+CSV:
 
 ```bash
-python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream
-python relationship_lineage.py examples/customer-chain.json S4:10000891 --direction upstream
-python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream --stop-system MDG
-python relationship_lineage.py examples/customer-chain.json AFS:4711 --direction downstream --max-depth 1
+data-relationship-map import-csv examples/csv/manifest.json \
+  --output customer-model.json
+
+data-relationship-map validate customer-model.json
 ```
 
-Build it from CSV:
-
-```bash
-python csv_adapter.py examples/csv/manifest.json --output customer-model.json
-python relationship_map.py customer-model.json validate
-python relationship_policy.py customer-model.json examples/identity-policy.json
-```
-
-Build it from XLSX. The repository generates a small synthetic workbook for the example/CI path:
+XLSX:
 
 ```bash
 python examples/xlsx/make_sample.py examples/xlsx/customer_crosswalk.xlsx
-python xlsx_adapter.py examples/xlsx/manifest.json --output customer-xlsx-model.json
-python relationship_map.py customer-xlsx-model.json path AFS:4711 S4:10000345
+
+data-relationship-map import-xlsx examples/xlsx/manifest.json \
+  --output customer-xlsx-model.json
 ```
 
-Compare two snapshots:
+A manifest can combine several crosswalk, partner-function, organization or other extracts into one canonical investigation model while retaining file/sheet/row provenance.
+
+## Ask different relationship questions explicitly
+
+### Identity path
 
 ```bash
-python relationship_diff.py examples/customer-chain.json examples/customer-chain-after.json
+data-relationship-map path examples/customer-chain.json \
+  AFS:4711 S4:10000891
 ```
 
-Run tests:
+`path` is intentionally symmetric. It answers **how are these two identities connected?** without pretending every relationship is directional impact.
+
+### Downstream lineage
 
 ```bash
-python -m unittest discover -s tests -v
+data-relationship-map lineage examples/customer-chain.json AFS:4711 \
+  --direction downstream
 ```
 
-## Identity path vs directed lineage
+### Upstream lineage
 
-`relationship_map.py path` is intentionally symmetric: it answers **how are these two IDs connected?**
+```bash
+data-relationship-map lineage examples/customer-chain.json S4:10000891 \
+  --direction upstream
+```
 
-`relationship_lineage.py` is directional: it answers **what can this object feed or affect downstream?** or **where could this object have come from upstream?** It never silently walks a relationship backward.
+### Bounded traversal
 
-The output includes one deterministic path from the start to every reached node, relationship types, available provenance, node depth, and any boundary where propagation stopped.
+```bash
+data-relationship-map lineage examples/customer-chain.json AFS:4711 \
+  --direction downstream \
+  --stop-system MDG
+```
 
-## Cardinality and ambiguity policy
+Lineage never silently walks an edge backwards. Output retains relationship type, provenance, deterministic paths, node depth and the boundary where traversal stopped.
 
-A graph can be structurally valid while still being suspicious. For example, a legacy customer may unexpectedly map to two target BPs, or two source IDs may converge into one target where the mapping is expected to be 1:1.
+## Detect identity and cardinality problems
+
+A graph can be structurally valid and still be wrong for the business rule. A legacy customer may unexpectedly map to two target BPs, or several source IDs may converge where the relationship is expected to remain 1:1.
 
 ```json
 {
@@ -99,11 +94,60 @@ A graph can be structurally valid while still being suspicious. For example, a l
 }
 ```
 
-Rules are explicit per relationship type; relationships such as `ship_to` can remain unrestricted.
+```bash
+data-relationship-map policy examples/customer-chain.json \
+  examples/identity-policy.json
+```
+
+Policy output identifies the exact related IDs behind one-to-many or many-to-one ambiguity rather than reducing the problem to a generic validation error.
+
+## Stable investigation artifacts
+
+Objects, relationships and policy findings can be exposed through stable logical references:
+
+```bash
+data-relationship-map artifacts examples/customer-chain.json \
+  --policy examples/identity-policy.json \
+  --output build/relationship-artifacts.json
+```
+
+The artifact index uses producer-owned `eac://` identities and retains source provenance. These are logical references, not network URLs or trust assertions; downstream assurance tools must bind them explicitly.
+
+This makes findings reusable without copying Data Relationship Map's semantic ownership into another repository.
+
+## Compare relationship state over time
+
+```bash
+data-relationship-map diff \
+  examples/customer-chain.json \
+  examples/customer-chain-after.json
+```
+
+The diff reports relationship and orphan drift so an investigation can distinguish a long-standing anomaly from a newly introduced relationship change.
+
+## Current capabilities
+
+- CSV and `.xlsx` ingestion through small manifests;
+- multiple source files in one canonical investigation model;
+- XLSX reading without an Excel runtime dependency;
+- composite IDs built directly from source columns;
+- explicit normalization: `strip`, `upper`, `lower`, `strip_leading_zeros`;
+- vendor-neutral canonical graph;
+- file/sheet/row provenance;
+- normalized identity-collision diagnostics instead of silent merge;
+- conflicting attribute detection for repeated canonical IDs;
+- broken-reference, duplicate and orphan detection;
+- explicit relationship-cardinality policy;
+- one-to-many and many-to-one ambiguity diagnostics;
+- symmetric shortest identity path;
+- strict downstream and upstream lineage;
+- system/object and max-depth traversal boundaries;
+- snapshot relationship/orphan drift;
+- stable `eac://` references for objects, relationships and findings;
+- installable `data-relationship-map` command;
+- unit tests and installed-CLI smoke tests in GitHub Actions.
 
 ## Composite keys and normalization
-
-Templates can use several export columns:
 
 ```json
 {
@@ -117,23 +161,7 @@ Templates can use several export columns:
 }
 ```
 
-Normalization is explicit rather than automatic. If two raw identities normalize to the same canonical ID, the node contains `identity_collisions` plus source provenance so the merge can be investigated.
-
-## CSV manifest
-
-```json
-{
-  "node_sources": [
-    {"file": "customer_crosswalk.csv", "id": "AFS:{AFS_KUNNR}", "system": "AFS", "object": "customer"},
-    {"file": "customer_crosswalk.csv", "id": "MDG:{MDG_BP}", "system": "MDG", "object": "business-partner"}
-  ],
-  "relationship_sources": [
-    {"file": "customer_crosswalk.csv", "from": "AFS:{AFS_KUNNR}", "to": "MDG:{MDG_BP}", "type": "mapped_to"}
-  ]
-}
-```
-
-Source-specific exports stay at the boundary while analysis remains reusable outside SAP.
+Normalization is explicit rather than automatic. If two raw identities normalize to the same canonical ID, the node records the collision plus source provenance so the merge can be investigated.
 
 ## Canonical model
 
@@ -144,7 +172,9 @@ Source-specific exports stay at the boundary while analysis remains reusable out
       "id": "AFS:4711",
       "system": "AFS",
       "object": "customer",
-      "provenance": [{"file": "customer_crosswalk.xlsx", "sheet": "Crosswalk", "row": 2}]
+      "provenance": [
+        {"file": "customer_crosswalk.xlsx", "sheet": "Crosswalk", "row": 2}
+      ]
     }
   ],
   "relationships": [
@@ -152,47 +182,33 @@ Source-specific exports stay at the boundary while analysis remains reusable out
       "from": "AFS:4711",
       "to": "MDG:7200311",
       "type": "mapped_to",
-      "provenance": {"file": "customer_crosswalk.xlsx", "sheet": "Crosswalk", "row": 2}
+      "provenance": {
+        "file": "customer_crosswalk.xlsx",
+        "sheet": "Crosswalk",
+        "row": 2
+      }
     }
   ]
 }
 ```
 
-## Product direction
+## Ownership boundary
 
-1. Merge several crosswalk/partner/org extracts into one investigation model.
-2. Deterministic severity/prioritization for findings.
-3. Emit stable `eac://` artifact references for nodes/relationships/findings.
-4. Investigation summaries with source references.
-5. Export into the shared browser graph explorer.
-6. Reconciliation-as-Code integration for expected-vs-observed links.
-7. Enterprise Change Graph integration for impact propagation.
+Data Relationship Map owns the **observed identity/relationship model and findings derived from supplied exports**. It does not become the authoring home for Mapping-as-Code transformation intent, Reconciliation-as-Code controls, or Enterprise Change Graph propagation rules.
 
-## Design principles
-
-- versionable
-- portable
-- machine-readable
-- deterministic-first
-- provenance-preserving
-- explicit direction for lineage/impact
-- explicit normalization and relationship policy
-- Git-friendly
-- vendor-neutral where practical
-- synthetic examples safe to publish
+The next product step is one consolidated investigation decision surface: structural findings + identity/cardinality policy + bounded lineage + exact source provenance in one reviewer-friendly report. See [ROADMAP.md](ROADMAP.md).
 
 ## Related projects
 
 - [Mapping as Code](https://github.com/dkharlanau/mapping-as-code)
-- [Transformation Graph](https://github.com/dkharlanau/transformation-graph)
-- [Interface as Code](https://github.com/dkharlanau/interface-as-code)
 - [Reconciliation as Code](https://github.com/dkharlanau/reconciliation-as-code)
-- [Process as Code](https://github.com/dkharlanau/process-as-code)
+- [Transformation Graph](https://github.com/dkharlanau/transformation-graph)
 - [Enterprise Change Graph](https://github.com/dkharlanau/enterprise-change-graph)
-- [Decision Tables as Code](https://github.com/dkharlanau/decision-tables-as-code)
-- [Cutover Graph](https://github.com/dkharlanau/cutover-graph)
 - [Project Evidence Graph](https://github.com/dkharlanau/project-evidence-graph)
+- [Visual Workbench](https://github.com/dkharlanau/visual-workbench)
+
+Portfolio map: https://dkharlanau.github.io/products/
 
 ## Status
 
-**MVP / active development.** CSV/XLSX ingestion, composite keys, normalization, provenance, collision/cardinality diagnostics, symmetric identity paths, directed lineage/impact, snapshot drift, examples, tests, and CI are implemented.
+**Executable MVP / active development.** Multi-source CSV/XLSX ingestion, explicit normalization, provenance, collision/cardinality diagnostics, identity paths, directional lineage, stable artifact references, snapshot drift, installed CLI, tests and CI are implemented.
