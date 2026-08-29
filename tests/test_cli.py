@@ -41,9 +41,10 @@ class UnifiedCliTests(unittest.TestCase):
                 "--focus",
                 "AFS:4711",
             ])
-        # The example deliberately contains an orphan, so the report fails loud as invalid_model.
+        # The example deliberately contains an orphan. The graph remains structurally
+        # valid, but the investigation must surface the orphan as a finding.
         self.assertEqual(result, 1)
-        self.assertIn('"status": "invalid_model"', output.getvalue())
+        self.assertIn('"status": "findings"', output.getvalue())
         self.assertIn('"focus": "AFS:4711"', output.getvalue())
 
     def test_unknown_command_fails_loudly(self):
