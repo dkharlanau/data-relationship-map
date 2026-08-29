@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "data-relationship-map"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cross-system identity and lineage investigations from ordinary CSV/XLSX enterprise exports."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://dkharlanau.github.io/data-relationship-map/"
+Homepage = "https://github.com/dkharlanau/data-relationship-map"
 Repository = "https://github.com/dkharlanau/data-relationship-map"
 Issues = "https://github.com/dkharlanau/data-relationship-map/issues"
 Portfolio = "https://dkharlanau.github.io/products/"
@@ -45,6 +45,7 @@ py-modules = [
   "drm_cli",
   "relationship_artifacts",
   "relationship_diff",
+  "relationship_investigation",
   "relationship_lineage",
   "relationship_map",
   "relationship_policy",
