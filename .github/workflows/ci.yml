@@ -34,6 +34,34 @@ jobs:
             --policy examples/identity-policy.json \
             --output /tmp/relationship-artifacts.json
           test -s /tmp/relationship-artifacts.json
+
+          # customer-chain intentionally has an orphan, so the consolidated report
+          # must fail loud while still producing reviewer artifacts.
+          set +e
+          data-relationship-map investigate examples/customer-chain.json \
+            --policy examples/identity-policy.json \
+            --focus AFS:4711 \
+            --json-output /tmp/investigation.json \
+            --markdown /tmp/investigation.md
+          investigation_exit=$?
+          set -e
+          test "$investigation_exit" -eq 1
+          test -s /tmp/investigation.json
+          test -s /tmp/investigation.md
+          grep -q '"status": "invalid_model"' /tmp/investigation.json
+          grep -q 'Downstream context' /tmp/investigation.md
+
+          # ambiguity example is structurally valid but violates explicit 1:1 policy.
+          set +e
+          data-relationship-map investigate examples/ambiguous-identity.json \
+            --policy examples/identity-policy.json \
+            --focus AFS:4711 \
+            --json-output /tmp/ambiguous-investigation.json
+          ambiguity_exit=$?
+          set -e
+          test "$ambiguity_exit" -eq 1
+          grep -q '"status": "findings"' /tmp/ambiguous-investigation.json
+          grep -q '"policy_finding_count": 2' /tmp/ambiguous-investigation.json
       - name: Backwards-compatible module workflows
         run: |
           python relationship_map.py examples/customer-chain.json validate
