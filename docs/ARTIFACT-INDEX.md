@@ -97,6 +97,8 @@ project-evidence-graph import-relationship \
 
 Observed objects and relationships become external evidence; policy findings become external defects. Observation time is preserved. The adapter deliberately does not guess which project requirement or change the evidence belongs to.
 
+Use separate virtual environments for the two installed MVP CLIs. They currently expose generic top-level Python module names that can collide in one environment. The tested integration boundary is the retained JSON artifact index, not a shared Python process or package environment.
+
 ## Boundary
 
 The emitter and handoff builder have no runtime dependency on Project Evidence Graph. They expose stable domain artifacts; consumers decide which objects/findings matter to a wider project or assurance graph. The cross-repository workflow tests the current producer and consumer contract without moving semantic ownership into this repository.

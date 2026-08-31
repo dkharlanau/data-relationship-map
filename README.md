@@ -76,6 +76,8 @@ project-evidence-graph analyze build/project-relationship-evidence.json
 
 Project Evidence Graph preserves the producer observation time, represents observed objects and relationships as evidence, and represents failed relationship-policy findings as externally owned defects. It does not automatically attach them to a requirement or change; that bridge remains an explicit project-owned decision.
 
+Run the two installed CLIs in separate virtual environments. Both MVP packages currently expose generic top-level Python module names, so a shared environment can create import-name collisions. The handoff is the verified JSON file contract between those environments; install order is not part of that contract.
+
 ## Build the graph from exports
 
 CSV:

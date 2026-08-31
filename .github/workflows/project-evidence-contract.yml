@@ -41,26 +41,28 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install current CLIs
+      - name: Install current CLIs in isolated environments
         run: |
-          python -m pip install .
-          python -m pip install ./_deps/project-evidence-graph
+          python -m venv /tmp/drm-venv
+          python -m venv /tmp/peg-venv
+          /tmp/drm-venv/bin/python -m pip install .
+          /tmp/peg-venv/bin/python -m pip install ./_deps/project-evidence-graph
 
       - name: Build and verify a bounded relationship handoff
         run: |
-          data-relationship-map handoff build examples/ambiguous-identity.json /tmp/relationship-handoff \
+          /tmp/drm-venv/bin/data-relationship-map handoff build examples/ambiguous-identity.json /tmp/relationship-handoff \
             --policy examples/identity-policy.json \
             --focus AFS:4711 \
             --max-depth 2 \
             --observed-at 2026-08-25T10:00:00Z
-          data-relationship-map handoff verify /tmp/relationship-handoff
+          /tmp/drm-venv/bin/data-relationship-map handoff verify /tmp/relationship-handoff
 
       - name: Import the retained artifact index into Project Evidence Graph
         run: |
-          project-evidence-graph import-relationship \
+          /tmp/peg-venv/bin/project-evidence-graph import-relationship \
             /tmp/relationship-handoff/artifact-index.json \
             --output /tmp/project-relationship-evidence.json
-          project-evidence-graph analyze /tmp/project-relationship-evidence.json
+          /tmp/peg-venv/bin/project-evidence-graph analyze /tmp/project-relationship-evidence.json
 
       - name: Assert bounded scope, findings, provenance, and observation time
         run: |
