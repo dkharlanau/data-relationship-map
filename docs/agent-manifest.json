@@ -5,12 +5,14 @@
   "human_url": "https://dkharlanau.github.io/data-relationship-map/",
   "repository": "https://github.com/dkharlanau/data-relationship-map",
   "boundaries": ["not an ETL engine", "not a master-data hub", "normalization must be explicit", "do not resolve identity collisions or broken links by guesswork"],
-  "capabilities": ["ingest CSV/XLSX manifests", "build composite canonical IDs", "validate graph", "detect collisions/conflicts/orphans/broken references", "enforce relationship cardinality", "find identity paths", "traverse directional lineage", "compare graph snapshots"],
+  "capabilities": ["ingest CSV/XLSX manifests", "build composite canonical IDs", "validate graph", "detect collisions/conflicts/orphans/broken references", "enforce relationship cardinality", "find identity paths", "traverse directional lineage", "build browser-ready investigation reports", "build and verify bounded integrity-checkable handoffs", "compare graph snapshots"],
   "entrypoints": [
     {"type":"cli","command":"python csv_adapter.py <manifest.json> --output <graph.json>"},
     {"type":"cli","command":"python relationship_map.py <graph.json> validate"},
     {"type":"cli","command":"python relationship_map.py <graph.json> path <id-a> <id-b>"},
     {"type":"cli","command":"python relationship_lineage.py <graph.json> <id> --direction downstream"},
+    {"type":"cli","command":"data-relationship-map handoff build <graph.json> <output-dir> --focus <id>"},
+    {"type":"cli","command":"data-relationship-map handoff verify <output-dir>"},
     {"type":"cli","command":"python relationship_policy.py <graph.json> <policy.json>"}
   ],
   "safe_agent_loop": ["read manifest and normalization rules", "build/validate graph", "surface collisions before path interpretation", "choose identity path or directional lineage explicitly", "apply cardinality policy", "return relationship types and provenance"],

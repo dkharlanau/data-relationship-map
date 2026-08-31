@@ -1,6 +1,6 @@
 import unittest
 
-from relationship_investigation import build_investigation, render_markdown
+from relationship_investigation import build_investigation, render_html, render_markdown
 
 
 class InvestigationReportTests(unittest.TestCase):
@@ -53,6 +53,12 @@ class InvestigationReportTests(unittest.TestCase):
         self.assertIn("**Status:** `clear`", markdown)
         self.assertIn("crosswalk.csv", markdown)
         self.assertIn("Downstream context", markdown)
+
+        html = render_html(report)
+        self.assertIn("<!doctype html>", html)
+        self.assertIn("Data Relationship Investigation", html)
+        self.assertIn("crosswalk.csv", html)
+        self.assertNotIn("<script", html)
 
     def test_policy_ambiguity_becomes_findings(self):
         ambiguous = {

@@ -9,6 +9,7 @@ from collections.abc import Callable
 import csv_adapter
 import relationship_artifacts
 import relationship_diff
+import relationship_handoff
 import relationship_investigation
 import relationship_lineage
 import relationship_map
@@ -21,6 +22,7 @@ Main = Callable[[], int]
 
 COMMANDS: dict[str, tuple[Main, str]] = {
     "investigate": (relationship_investigation.main, "Build one structural/policy/lineage/provenance investigation report"),
+    "handoff": (relationship_handoff.main, "Build or verify a bounded integrity-checkable investigation handoff"),
     "lineage": (relationship_lineage.main, "Trace strict upstream/downstream lineage"),
     "policy": (relationship_policy.main, "Evaluate identity/cardinality policy"),
     "diff": (relationship_diff.main, "Compare relationship graph snapshots"),

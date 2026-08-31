@@ -45,6 +45,7 @@ py-modules = [
   "drm_cli",
   "relationship_artifacts",
   "relationship_diff",
+  "relationship_handoff",
   "relationship_investigation",
   "relationship_lineage",
   "relationship_map",

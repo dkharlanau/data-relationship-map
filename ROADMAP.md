@@ -24,16 +24,17 @@
 - installable Python package and unified `data-relationship-map` command
 - consolidated `investigate` report combining structural findings, supplied identity/cardinality policy, bounded upstream/downstream lineage and provenance
 - deterministic JSON and reviewer-readable Markdown investigation output
+- standalone dependency-free HTML investigation output generated from the same report
+- bounded subgraph handoff with deterministic `pack_id`, JSON/Markdown/HTML review artifacts and SHA-256 manifest verification
 - fail-loud investigation statuses: `clear`, `findings`, `invalid_model`, `invalid_focus`
 - realistic AFS → MDG → S/4 examples
 - unit tests and GitHub Actions CI, including installed-CLI smoke tests
 
-## Now — bounded handoff and finding policy
+## Now — finding severity and lifecycle policy
 
-1. Package the selected upstream/downstream investigation context as a bounded, integrity-checkable subgraph for another tool or agent.
-2. Add explicit deterministic finding severity/prioritization policy instead of introducing an opaque score.
-3. Give findings a review lifecycle (`open`, `accepted`, `resolved`, `superseded`) without rewriting historical evidence.
-4. Generate a browser-ready investigation view from the same bounded report rather than maintaining a second visualization model.
+1. Add explicit deterministic finding severity/prioritization policy instead of introducing an opaque score.
+2. Give findings a review lifecycle (`open`, `accepted`, `resolved`, `superseded`) without rewriting historical evidence.
+3. Define compatibility rules for comparing finding identity across repeated bounded handoffs.
 
 ## Next — ecosystem integration
 

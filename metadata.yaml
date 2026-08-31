@@ -34,6 +34,8 @@ implementation:
   investigation_markdown: true
   bounded_lineage_context: true
   provenance_investigation_refs: true
+  browser_investigation_report: true
+  bounded_integrity_handoff: true
   test_suite: true
   ci: true
   sap_access_required: false

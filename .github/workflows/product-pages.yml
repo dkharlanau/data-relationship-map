@@ -25,9 +25,15 @@ jobs:
       - uses: actions/checkout@v6
       - name: Stage product site
         run: |
-          mkdir -p _site
+          mkdir -p _site/demo
           cp docs/product.html _site/index.html
           cp docs/agent-manifest.json _site/agent-manifest.json
+          python relationship_handoff.py build examples/customer-chain.json \
+            _site/demo/handoff \
+            --policy examples/identity-policy.json \
+            --focus AFS:4711 \
+            --max-depth 2
+          python relationship_handoff.py verify _site/demo/handoff
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4

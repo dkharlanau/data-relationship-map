@@ -43,6 +43,24 @@ The status is deterministic:
 
 The report does not infer relationships that are absent from the supplied model.
 
+## Package a bounded handoff
+
+An investigation can be reduced to the selected upstream/downstream context and retained as an integrity-checkable pack for another reviewer, tool or agent:
+
+```bash
+data-relationship-map handoff build examples/customer-chain.json \
+  build/customer-handoff \
+  --policy examples/identity-policy.json \
+  --focus AFS:4711 \
+  --max-depth 2
+
+data-relationship-map handoff verify build/customer-handoff
+```
+
+The handoff contains the bounded canonical graph, the same investigation as JSON, Markdown and standalone HTML, plus a manifest with a deterministic `pack_id`, byte counts and SHA-256 hashes. Verification checks every retained file and recomputes semantic identity. Unrelated nodes and findings are excluded; invalid models and unknown focus objects fail before a pack is written.
+
+The [public synthetic handoff](https://dkharlanau.github.io/data-relationship-map/demo/handoff/investigation.html) can be reviewed in a browser. Its [manifest](https://dkharlanau.github.io/data-relationship-map/demo/handoff/manifest.json) and [bounded graph](https://dkharlanau.github.io/data-relationship-map/demo/handoff/graph.json) show the exact retained scope.
+
 ## Build the graph from exports
 
 CSV:
@@ -174,6 +192,8 @@ The diff reports relationship and orphan drift so an investigation can distingui
 - strict downstream and upstream lineage;
 - system/object and max-depth traversal boundaries;
 - consolidated JSON/Markdown investigation report;
+- standalone dependency-free HTML investigation report;
+- bounded integrity-checkable handoff packs with deterministic identity and per-file SHA-256;
 - snapshot relationship/orphan drift;
 - stable `eac://` references for objects, relationships and findings;
 - explicit timezone-aware observation time for exported assurance artifacts;
@@ -231,7 +251,7 @@ Normalization is explicit rather than automatic. If two raw identities normalize
 
 Data Relationship Map owns the **observed identity/relationship model, observation time, and findings derived from supplied exports**. It does not become the authoring home for Mapping-as-Code transformation intent, Reconciliation-as-Code controls, Project Evidence Graph assurance relationships, or Enterprise Change Graph propagation rules.
 
-The next product step is a bounded integrity-checkable handoff plus explicit finding lifecycle/severity policy. See [ROADMAP.md](ROADMAP.md).
+The next product step is explicit finding severity and review lifecycle policy. See [ROADMAP.md](ROADMAP.md).
 
 ## Related projects
 
@@ -246,4 +266,4 @@ Portfolio map: https://dkharlanau.github.io/products/
 
 ## Status
 
-**Executable MVP / active development, v0.2.0.** Multi-source CSV/XLSX ingestion, explicit normalization, provenance, collision/cardinality diagnostics, identity paths, directional lineage, consolidated investigation reports, freshness-aware stable artifacts, snapshot drift, installed CLI, tests and CI are implemented.
+**Executable MVP / active development, v0.2.0.** Multi-source CSV/XLSX ingestion, explicit normalization, provenance, collision/cardinality diagnostics, identity paths, directional lineage, browser-ready investigation reports, bounded integrity-checkable handoffs, freshness-aware stable artifacts, snapshot drift, installed CLI, tests and CI are implemented.

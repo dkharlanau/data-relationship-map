@@ -55,6 +55,18 @@ jobs:
           grep -q 'Orphan node' /tmp/investigation.md
           grep -q 'Downstream context' /tmp/investigation.md
 
+          data-relationship-map handoff build examples/customer-chain.json \
+            /tmp/relationship-handoff \
+            --policy examples/identity-policy.json \
+            --focus AFS:4711 \
+            --max-depth 2
+          data-relationship-map handoff verify /tmp/relationship-handoff
+          test -s /tmp/relationship-handoff/manifest.json
+          test -s /tmp/relationship-handoff/graph.json
+          test -s /tmp/relationship-handoff/investigation.json
+          test -s /tmp/relationship-handoff/investigation.md
+          test -s /tmp/relationship-handoff/investigation.html
+
           # ambiguity example is structurally valid but violates explicit 1:1 policy.
           set +e
           data-relationship-map investigate examples/ambiguous-identity.json \
@@ -78,6 +90,9 @@ jobs:
           python relationship_map.py /tmp/customer-model.json path AFS:4711 S4:10000345
           python relationship_policy.py /tmp/customer-model.json examples/identity-policy.json
           python relationship_diff.py examples/customer-chain.json examples/customer-chain-after.json
+          python relationship_handoff.py build examples/customer-chain.json /tmp/module-handoff \
+            --policy examples/identity-policy.json --focus AFS:4711 --max-depth 2
+          python relationship_handoff.py verify /tmp/module-handoff
           python examples/xlsx/make_sample.py examples/xlsx/customer_crosswalk.xlsx
           python xlsx_adapter.py examples/xlsx/manifest.json --output /tmp/customer-xlsx-model.json
           python relationship_map.py /tmp/customer-xlsx-model.json validate

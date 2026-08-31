@@ -12,6 +12,7 @@ class UnifiedCliTests(unittest.TestCase):
             result = drm_cli.main(["--help"])
         self.assertEqual(result, 0)
         self.assertIn("investigate", output.getvalue())
+        self.assertIn("handoff", output.getvalue())
         self.assertIn("lineage", output.getvalue())
         self.assertIn("artifacts", output.getvalue())
 
