@@ -10,13 +10,15 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from relationship_artifacts import build_index, normalize_observed_at
 from relationship_investigation import build_investigation, render_html, render_markdown
 from relationship_map import load_model
 from relationship_policy import load_policy
 
 
-SCHEMA_VERSION = "0.1"
-PACK_FILES = ("graph.json", "investigation.json", "investigation.md", "investigation.html")
+SCHEMA_VERSION = "0.2"
+LEGACY_PACK_FILES = ("graph.json", "investigation.json", "investigation.md", "investigation.html")
+PACK_FILES = (*LEGACY_PACK_FILES, "artifact-index.json")
 
 
 def _canonical_bytes(value: Any) -> bytes:
@@ -77,9 +79,15 @@ def build_handoff(
     max_depth: int | None = 2,
     stop_systems: set[str] | None = None,
     stop_objects: set[str] | None = None,
+    observed_at: Any = None,
 ) -> dict[str, Any]:
+    scoped_model = dict(model)
+    observation = normalize_observed_at(observed_at if observed_at is not None else model.get("observed_at"))
+    if observation is not None:
+        scoped_model["observed_at"] = observation
+
     scope_report = build_investigation(
-        model,
+        scoped_model,
         policy=policy,
         focus=focus,
         max_depth=max_depth,
@@ -89,7 +97,7 @@ def build_handoff(
     if scope_report["status"] in {"invalid_model", "invalid_focus"}:
         raise ValueError(f"cannot build handoff from {scope_report['status']}")
 
-    graph = _bounded_graph(model, scope_report)
+    graph = _bounded_graph(scoped_model, scope_report)
     # Re-evaluate the selected graph so every finding in the handoff can be
     # reconstructed from the files inside the handoff itself.
     report = build_investigation(
@@ -100,7 +108,8 @@ def build_handoff(
         stop_systems=stop_systems,
         stop_objects=stop_objects,
     )
-    semantic_payload = {"graph": graph, "investigation": report}
+    artifact_index = build_index(graph, policy)
+    semantic_payload = {"graph": graph, "investigation": report, "artifact_index": artifact_index}
     pack_id = "relationship-handoff-" + hashlib.sha256(_canonical_bytes(semantic_payload)).hexdigest()[:24]
 
     destination = Path(output_dir)
@@ -115,6 +124,10 @@ def build_handoff(
     )
     (destination / "investigation.md").write_text(render_markdown(report), encoding="utf-8")
     (destination / "investigation.html").write_text(render_html(report), encoding="utf-8")
+    (destination / "artifact-index.json").write_text(
+        json.dumps(artifact_index, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
 
     files = {
         name: {
@@ -129,6 +142,7 @@ def build_handoff(
         "purpose": "bounded-cross-system-relationship-investigation-handoff",
         "focus": focus,
         "status": report["status"],
+        "observed_at": artifact_index.get("observed_at"),
         "bounds": {
             "max_depth": max_depth,
             "stop_systems": sorted(stop_systems or set()),
@@ -157,7 +171,19 @@ def verify_handoff(output_dir: str | Path) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError) as exc:
         return {"valid": False, "pack_id": None, "errors": [{"kind": "invalid_manifest", "detail": str(exc)}]}
 
-    for name in PACK_FILES:
+    schema_version = str(manifest.get("schema_version", "0.1"))
+    if schema_version == "0.2":
+        pack_files = PACK_FILES
+    elif schema_version == "0.1":
+        pack_files = LEGACY_PACK_FILES
+    else:
+        return {
+            "valid": False,
+            "pack_id": manifest.get("pack_id"),
+            "errors": [{"kind": "unsupported_schema_version", "schema_version": schema_version}],
+        }
+
+    for name in pack_files:
         path = destination / name
         expected = (manifest.get("files") or {}).get(name)
         if not isinstance(expected, dict):
@@ -176,8 +202,13 @@ def verify_handoff(output_dir: str | Path) -> dict[str, Any]:
         try:
             graph = json.loads((destination / "graph.json").read_text(encoding="utf-8"))
             investigation = json.loads((destination / "investigation.json").read_text(encoding="utf-8"))
+            semantic_payload = {"graph": graph, "investigation": investigation}
+            if schema_version == "0.2":
+                semantic_payload["artifact_index"] = json.loads(
+                    (destination / "artifact-index.json").read_text(encoding="utf-8")
+                )
             expected_id = "relationship-handoff-" + hashlib.sha256(
-                _canonical_bytes({"graph": graph, "investigation": investigation})
+                _canonical_bytes(semantic_payload)
             ).hexdigest()[:24]
             if manifest.get("pack_id") != expected_id:
                 errors.append({"kind": "pack_id_mismatch", "expected": expected_id})
@@ -203,6 +234,10 @@ def main() -> int:
     build_parser.add_argument("--max-depth", type=int, default=2)
     build_parser.add_argument("--stop-system", action="append", default=[])
     build_parser.add_argument("--stop-object", action="append", default=[])
+    build_parser.add_argument(
+        "--observed-at",
+        help="explicit ISO-8601 time when the supplied exports/model were observed; must include timezone",
+    )
 
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("output_dir")
@@ -218,6 +253,7 @@ def main() -> int:
                 max_depth=args.max_depth,
                 stop_systems=set(args.stop_system),
                 stop_objects=set(args.stop_object),
+                observed_at=args.observed_at,
             )
             print(json.dumps(result, indent=2, ensure_ascii=False))
             return 0

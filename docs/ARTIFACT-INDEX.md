@@ -7,6 +7,7 @@
 ```bash
 python relationship_artifacts.py model.json \
   --policy examples/identity-policy.json \
+  --observed-at 2026-08-25T10:00:00Z \
   --output relationship-artifacts.json
 ```
 
@@ -68,6 +69,34 @@ The artifact index keeps two separate signals:
 
 A valid graph containing a real one-to-many policy violation is still structurally valid. The finding is the result, not an artifact-index corruption.
 
+## Bounded, integrity-checked handoff
+
+`data-relationship-map handoff build` writes the same contract as `artifact-index.json` inside a bounded handoff pack. The index is generated from the retained graph slice and supplied policy, so out-of-scope objects and findings remain out of scope. `--observed-at` stamps an explicit timezone-aware source observation time; the tool never substitutes its wall clock.
+
+```bash
+data-relationship-map handoff build model.json relationship-handoff/ \
+  --policy examples/identity-policy.json \
+  --focus AFS:4711 \
+  --max-depth 2 \
+  --observed-at 2026-08-25T10:00:00Z
+
+data-relationship-map handoff verify relationship-handoff/
+```
+
+The pack manifest covers `artifact-index.json` by byte count and SHA-256, and pack identity includes its semantics. Current `0.2` packs include this file; the verifier remains compatible with retained `0.1` packs.
+
+## Implemented Project Evidence Graph consumer
+
+Project Evidence Graph imports the retained index without changing producer ownership:
+
+```bash
+project-evidence-graph import-relationship \
+  relationship-handoff/artifact-index.json \
+  --output project-relationship-evidence.json
+```
+
+Observed objects and relationships become external evidence; policy findings become external defects. Observation time is preserved. The adapter deliberately does not guess which project requirement or change the evidence belongs to.
+
 ## Boundary
 
-This emitter has no dependency on Project Evidence Graph. It exposes stable domain artifacts; consumers decide which objects/findings matter to a wider project or assurance graph.
+The emitter and handoff builder have no runtime dependency on Project Evidence Graph. They expose stable domain artifacts; consumers decide which objects/findings matter to a wider project or assurance graph. The cross-repository workflow tests the current producer and consumer contract without moving semantic ownership into this repository.

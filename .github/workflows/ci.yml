@@ -59,13 +59,16 @@ jobs:
             /tmp/relationship-handoff \
             --policy examples/identity-policy.json \
             --focus AFS:4711 \
-            --max-depth 2
+            --max-depth 2 \
+            --observed-at 2026-08-25T10:00:00Z
           data-relationship-map handoff verify /tmp/relationship-handoff
           test -s /tmp/relationship-handoff/manifest.json
           test -s /tmp/relationship-handoff/graph.json
           test -s /tmp/relationship-handoff/investigation.json
           test -s /tmp/relationship-handoff/investigation.md
           test -s /tmp/relationship-handoff/investigation.html
+          test -s /tmp/relationship-handoff/artifact-index.json
+          grep -q '"observed_at": "2026-08-25T10:00:00Z"' /tmp/relationship-handoff/artifact-index.json
 
           # ambiguity example is structurally valid but violates explicit 1:1 policy.
           set +e
@@ -91,7 +94,8 @@ jobs:
           python relationship_policy.py /tmp/customer-model.json examples/identity-policy.json
           python relationship_diff.py examples/customer-chain.json examples/customer-chain-after.json
           python relationship_handoff.py build examples/customer-chain.json /tmp/module-handoff \
-            --policy examples/identity-policy.json --focus AFS:4711 --max-depth 2
+            --policy examples/identity-policy.json --focus AFS:4711 --max-depth 2 \
+            --observed-at 2026-08-25T10:00:00Z
           python relationship_handoff.py verify /tmp/module-handoff
           python examples/xlsx/make_sample.py examples/xlsx/customer_crosswalk.xlsx
           python xlsx_adapter.py examples/xlsx/manifest.json --output /tmp/customer-xlsx-model.json

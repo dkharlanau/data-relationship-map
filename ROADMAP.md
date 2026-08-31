@@ -26,6 +26,9 @@
 - deterministic JSON and reviewer-readable Markdown investigation output
 - standalone dependency-free HTML investigation output generated from the same report
 - bounded subgraph handoff with deterministic `pack_id`, JSON/Markdown/HTML review artifacts and SHA-256 manifest verification
+- bounded handoff `artifact-index.json` covered by pack integrity and semantic identity
+- backward verification compatibility for retained handoff format `0.1`
+- tested Project Evidence Graph import of bounded observed relationships and policy findings
 - fail-loud investigation statuses: `clear`, `findings`, `invalid_model`, `invalid_focus`
 - realistic AFS → MDG → S/4 examples
 - unit tests and GitHub Actions CI, including installed-CLI smoke tests
@@ -38,7 +41,7 @@
 
 ## Next — ecosystem integration
 
-- emit Project Evidence Graph fragments so relationship findings can link to defects, changes, tests and evidence
+- document explicit project-owned bridges from imported relationship findings to requirements or changes without guessing traceability
 - let Reconciliation as Code consume expected identity/cardinality relationships as explicit controls
 - let Enterprise Change Graph consume bounded directional lineage as change-impact evidence
 - derive relationship edges from Mapping as Code without copying mapping ownership into this repository

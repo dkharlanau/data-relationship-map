@@ -32,7 +32,8 @@ jobs:
             _site/demo/handoff \
             --policy examples/identity-policy.json \
             --focus AFS:4711 \
-            --max-depth 2
+            --max-depth 2 \
+            --observed-at 2026-08-25T10:00:00Z
           python relationship_handoff.py verify _site/demo/handoff
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5

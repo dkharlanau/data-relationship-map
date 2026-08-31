@@ -52,14 +52,29 @@ data-relationship-map handoff build examples/customer-chain.json \
   build/customer-handoff \
   --policy examples/identity-policy.json \
   --focus AFS:4711 \
-  --max-depth 2
+  --max-depth 2 \
+  --observed-at 2026-08-25T10:00:00Z
 
 data-relationship-map handoff verify build/customer-handoff
 ```
 
-The handoff contains the bounded canonical graph, the same investigation as JSON, Markdown and standalone HTML, plus a manifest with a deterministic `pack_id`, byte counts and SHA-256 hashes. Verification checks every retained file and recomputes semantic identity. Unrelated nodes and findings are excluded; invalid models and unknown focus objects fail before a pack is written.
+The handoff contains the bounded canonical graph, the same investigation as JSON, Markdown and standalone HTML, a bounded `artifact-index.json`, and a manifest with a deterministic `pack_id`, byte counts and SHA-256 hashes. Verification checks every retained file and recomputes semantic identity. Unrelated nodes and findings are excluded; invalid models and unknown focus objects fail before a pack is written. Version `0.2` packs add the artifact index, while the verifier continues to accept retained `0.1` packs.
 
-The [public synthetic handoff](https://dkharlanau.github.io/data-relationship-map/demo/handoff/investigation.html) can be reviewed in a browser. Its [manifest](https://dkharlanau.github.io/data-relationship-map/demo/handoff/manifest.json) and [bounded graph](https://dkharlanau.github.io/data-relationship-map/demo/handoff/graph.json) show the exact retained scope.
+The [public synthetic handoff](https://dkharlanau.github.io/data-relationship-map/demo/handoff/investigation.html) can be reviewed in a browser. Its [manifest](https://dkharlanau.github.io/data-relationship-map/demo/handoff/manifest.json), [bounded graph](https://dkharlanau.github.io/data-relationship-map/demo/handoff/graph.json), and [artifact index](https://dkharlanau.github.io/data-relationship-map/demo/handoff/artifact-index.json) show the exact retained scope and machine handoff.
+
+### Hand the bounded evidence to Project Evidence Graph
+
+The retained artifact index is the implemented machine handoff. It is already inside the integrity-checked pack:
+
+```bash
+project-evidence-graph import-relationship \
+  build/customer-handoff/artifact-index.json \
+  --output build/project-relationship-evidence.json
+
+project-evidence-graph analyze build/project-relationship-evidence.json
+```
+
+Project Evidence Graph preserves the producer observation time, represents observed objects and relationships as evidence, and represents failed relationship-policy findings as externally owned defects. It does not automatically attach them to a requirement or change; that bridge remains an explicit project-owned decision.
 
 ## Build the graph from exports
 
@@ -155,7 +170,7 @@ data-relationship-map artifacts examples/customer-chain.json \
 
 The artifact index uses producer-owned `eac://` identities and retains source provenance. These are logical references, not network URLs or trust assertions. Downstream tools must bind them explicitly.
 
-Project Evidence Graph can import the index while preserving observation time:
+Project Evidence Graph can import this index while preserving observation time. Use the standalone command when a full-model index is wanted outside a bounded pack:
 
 ```bash
 project-evidence-graph import-relationship build/relationship-artifacts.json \
@@ -193,7 +208,7 @@ The diff reports relationship and orphan drift so an investigation can distingui
 - system/object and max-depth traversal boundaries;
 - consolidated JSON/Markdown investigation report;
 - standalone dependency-free HTML investigation report;
-- bounded integrity-checkable handoff packs with deterministic identity and per-file SHA-256;
+- bounded integrity-checkable handoff packs with deterministic identity, per-file SHA-256, and a retained machine artifact index;
 - snapshot relationship/orphan drift;
 - stable `eac://` references for objects, relationships and findings;
 - explicit timezone-aware observation time for exported assurance artifacts;
@@ -255,15 +270,20 @@ The next product step is explicit finding severity and review lifecycle policy. 
 
 ## Related projects
 
-- [Mapping as Code](https://github.com/dkharlanau/mapping-as-code)
-- [Reconciliation as Code](https://github.com/dkharlanau/reconciliation-as-code)
-- [Transformation Graph](https://github.com/dkharlanau/transformation-graph)
-- [Enterprise Change Graph](https://github.com/dkharlanau/enterprise-change-graph)
-- [Project Evidence Graph](https://github.com/dkharlanau/project-evidence-graph)
-- [Visual Workbench](https://github.com/dkharlanau/visual-workbench)
+- [Project Evidence Graph](https://github.com/dkharlanau/project-evidence-graph) has an implemented `import-relationship` adapter for the retained artifact index; project attachment still requires an explicit bridge.
+- [Transformation Graph](https://github.com/dkharlanau/transformation-graph) models governed transformation lineage. There is no direct adapter today, so observed identity links must not be presented as transformation intent.
+- [Enterprise Change Graph](https://github.com/dkharlanau/enterprise-change-graph) models dependency and regression impact. There is no direct adapter today; bounded directional lineage is an input candidate, not an implemented handoff.
+- [Reconciliation as Code](https://github.com/dkharlanau/reconciliation-as-code) evaluates explicit data controls. It does not currently consume Data Relationship Map artifacts directly.
 
 Portfolio map: https://dkharlanau.github.io/products/
 
 ## Status
 
-**Executable MVP / active development, v0.2.0.** Multi-source CSV/XLSX ingestion, explicit normalization, provenance, collision/cardinality diagnostics, identity paths, directional lineage, browser-ready investigation reports, bounded integrity-checkable handoffs, freshness-aware stable artifacts, snapshot drift, installed CLI, tests and CI are implemented.
+**Executable MVP / active development, v0.2.0.** Multi-source CSV/XLSX ingestion, explicit normalization, provenance, collision/cardinality diagnostics, identity paths, directional lineage, browser-ready investigation reports, bounded integrity-checkable handoffs with a Project Evidence Graph artifact index, freshness-aware stable artifacts, snapshot drift, installed CLI, tests and CI are implemented.
+
+## About the author
+
+Created and maintained by **Dzmitryi Kharlanau**, an SAP consultant and system analyst working across enterprise architecture, data, integration, operations, and practical AI.
+
+- [Website and knowledge base](https://dkharlanau.github.io/)
+- [LinkedIn](https://www.linkedin.com/in/dkharlanau/)

@@ -1,0 +1,92 @@
+name: Project Evidence handoff contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - relationship_artifacts.py
+      - relationship_handoff.py
+      - schema/artifact-index.schema.json
+      - tests/test_handoff.py
+      - .github/workflows/project-evidence-contract.yml
+  pull_request:
+    paths:
+      - relationship_artifacts.py
+      - relationship_handoff.py
+      - schema/artifact-index.schema.json
+      - tests/test_handoff.py
+      - .github/workflows/project-evidence-contract.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-relationship-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Data Relationship Map
+        uses: actions/checkout@v4
+
+      - name: Checkout current Project Evidence Graph
+        uses: actions/checkout@v4
+        with:
+          repository: dkharlanau/project-evidence-graph
+          ref: main
+          path: _deps/project-evidence-graph
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install current CLIs
+        run: |
+          python -m pip install .
+          python -m pip install ./_deps/project-evidence-graph
+
+      - name: Build and verify a bounded relationship handoff
+        run: |
+          data-relationship-map handoff build examples/ambiguous-identity.json /tmp/relationship-handoff \
+            --policy examples/identity-policy.json \
+            --focus AFS:4711 \
+            --max-depth 2 \
+            --observed-at 2026-08-25T10:00:00Z
+          data-relationship-map handoff verify /tmp/relationship-handoff
+
+      - name: Import the retained artifact index into Project Evidence Graph
+        run: |
+          project-evidence-graph import-relationship \
+            /tmp/relationship-handoff/artifact-index.json \
+            --output /tmp/project-relationship-evidence.json
+          project-evidence-graph analyze /tmp/project-relationship-evidence.json
+
+      - name: Assert bounded scope, findings, provenance, and observation time
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          index = json.loads(Path('/tmp/relationship-handoff/artifact-index.json').read_text())
+          fragment = json.loads(Path('/tmp/project-relationship-evidence.json').read_text())
+
+          assert index['repository'] == 'dkharlanau/data-relationship-map'
+          assert index['valid'] is True
+          assert index['policy_passed'] is False
+          assert index['observed_at'] == '2026-08-25T10:00:00Z'
+          assert [item['id'] for item in index['objects']] == [
+              'AFS:4711', 'MDG:7200311', 'MDG:7200312'
+          ]
+          assert len(index['findings']) == 1
+          assert index['findings'][0]['artifact_ref'].endswith(
+              '/finding/cardinality/mapped_to/outgoing/AFS:4711'
+          )
+
+          diagnostics = fragment['relationship_import_diagnostics']
+          assert diagnostics['valid'] is True
+          assert diagnostics['source_observed_at'] == '2026-08-25T10:00:00Z'
+          defects = [node for node in fragment['nodes'] if node['type'] == 'defect']
+          assert len(defects) == 1
+          assert all(node['observed_at'] == '2026-08-25T10:00:00Z' for node in fragment['nodes'])
+          PY
