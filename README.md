@@ -80,6 +80,13 @@ Run the two installed CLIs in separate virtual environments. Both MVP packages c
 
 ## Build the graph from exports
 
+Export headers must be non-empty and unique. CSV imports reject malformed quoting
+and rows with too many or too few fields; use an explicit empty cell for a missing
+value. XLSX imports reject populated cells beyond the header. These checks prevent
+columns from silently disappearing before identity and lineage analysis. CSV row
+provenance points to the physical starting line, including after multiline quoted
+values or blank lines.
+
 CSV:
 
 ```bash
