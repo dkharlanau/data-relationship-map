@@ -99,10 +99,14 @@ def read_sheet(path: Path, sheet_name: str) -> Iterator[tuple[int, dict[str, str
                 header = [str(value).strip() for value in values]
                 if not any(header):
                     raise ValueError(f"worksheet {sheet_name!r} has an empty header row")
+                if any(not name for name in header):
+                    raise ValueError(f"worksheet {sheet_name!r} has an empty column name")
                 duplicates = sorted({name for name in header if name and header.count(name) > 1})
                 if duplicates:
                     raise ValueError(f"worksheet {sheet_name!r} has duplicate headers: {duplicates}")
                 continue
+            if any(value for value in values[len(header):]):
+                raise ValueError(f"worksheet {sheet_name!r} row {row_number} has values beyond the header")
             padded = values + [""] * max(0, len(header) - len(values))
             yield row_number, {name: padded[index] for index, name in enumerate(header) if name}
 

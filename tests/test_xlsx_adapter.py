@@ -69,6 +69,19 @@ def write_minimal_xlsx(path: Path, rows, sheet_name="Data"):
 
 
 class XlsxAdapterTests(unittest.TestCase):
+    def test_rejects_populated_columns_without_headers(self):
+        cases = [
+            ([["ID", ""], ["1", "lost"]], "empty column"),
+            ([["ID"], ["1", "lost"]], "beyond the header"),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source.xlsx"
+            for rows, message in cases:
+                with self.subTest(rows=rows):
+                    write_minimal_xlsx(path, rows)
+                    with self.assertRaisesRegex(ValueError, message):
+                        list(read_sheet(path, "Data"))
+
     def test_builds_relationship_graph(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

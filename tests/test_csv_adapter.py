@@ -2,11 +2,37 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from csv_adapter import build_model
+from csv_adapter import build_model, read_rows
 from relationship_map import analyze, shortest_path
 
 
 class CsvAdapterTests(unittest.TestCase):
+    def test_malformed_exports_cannot_silently_change_identity(self):
+        cases = [
+            ("ID,ID\noriginal,overwritten\n", "duplicate"),
+            ("ID,\n1,unlabelled\n", "empty column"),
+            ("ID,NAME\n1\n", "line 2"),
+            ("ID,NAME\n1,A,extra\n", "line 2"),
+            ('ID,NAME\n1,"unclosed\n', "Invalid CSV"),
+            ("", "no header"),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source.csv"
+            for content, message in cases:
+                with self.subTest(content=content):
+                    path.write_text(content, encoding="utf-8")
+                    with self.assertRaisesRegex(ValueError, message):
+                        list(read_rows(path))
+
+    def test_multiline_values_keep_the_physical_source_row(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "source.csv"
+            path.write_text('\ufeffID,NAME\n1,"First\nsecond"\n\n2,\n', encoding="utf-8")
+            self.assertEqual(list(read_rows(path)), [
+                (2, {"ID": "1", "NAME": "First\nsecond"}),
+                (5, {"ID": "2", "NAME": ""}),
+            ])
+
     def test_build_model_from_crosswalk(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

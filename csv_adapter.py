@@ -18,10 +18,28 @@ def render(template: str, row: dict[str, str]) -> str:
 
 
 def read_rows(path: Path) -> Iterator[tuple[int, dict[str, str]]]:
-    with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        reader = csv.DictReader(handle)
-        for row_number, row in enumerate(reader, start=2):
-            yield row_number, dict(row)
+    try:
+        with path.open("r", encoding="utf-8-sig", newline="") as handle:
+            reader = csv.reader(handle, strict=True)
+            headers = next(reader, [])
+            if not headers:
+                raise ValueError(f"CSV has no header: {path}")
+            if any(not name.strip() for name in headers):
+                raise ValueError(f"CSV header contains an empty column name: {path}")
+            if len(headers) != len(set(headers)):
+                raise ValueError(f"CSV header contains duplicate column names: {path}")
+            while True:
+                row_number = reader.line_num + 1
+                values = next(reader, None)
+                if values is None:
+                    break
+                if not values:
+                    continue
+                if len(values) != len(headers):
+                    raise ValueError(f"CSV row at line {row_number} does not match the header width: {path}")
+                yield row_number, dict(zip(headers, values))
+    except csv.Error as exc:
+        raise ValueError(f"Invalid CSV at line {reader.line_num}: {path}: {exc}") from exc
 
 
 def _merge_node(nodes: dict[str, dict[str, Any]], candidate: dict[str, Any], source_ref: dict[str, Any]) -> None:
