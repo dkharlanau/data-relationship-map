@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dkharlanau/agent-ready-web-profile/v0.1.0/schema/site-profile.schema.json",
+  "profileVersion": "0.1",
+  "id": "data-relationship-map",
+  "name": "Data Relationship Map",
+  "canonicalUrl": "https://dkharlanau.github.io/data-relationship-map/",
+  "description": "Build an explainable cross-system identity and lineage graph from ordinary enterprise exports.",
+  "languages": [
+    "en"
+  ],
+  "trust": {
+    "provenance": "https://github.com/dkharlanau/data-relationship-map/blob/main/README.md",
+    "license": "https://github.com/dkharlanau/data-relationship-map/blob/main/LICENSE"
+  },
+  "data": {
+    "distributions": [
+      {
+        "name": "Project agent manifest",
+        "url": "https://dkharlanau.github.io/data-relationship-map/agent-manifest.json",
+        "mediaType": "application/json",
+        "role": "other",
+        "description": "Source-backed project scope and local CLI entrypoints; this is not a hosted execution endpoint."
+      }
+    ]
+  }
+}
