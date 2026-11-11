@@ -1,0 +1,5 @@
+SYSTEM,CLIENT,SOLD_TO,SHIP_TO,SALES_ORG,NOTE
+S4,100,0004711,0005000,1000,First delivery partner
+S4,100,0004711,0005001,1000,Second delivery partner
+S4,100,0004711,0005000,1000,Independent duplicate support
+,,,,,

@@ -81,6 +81,8 @@ jobs:
           test "$ambiguity_exit" -eq 1
           grep -q '"status": "findings"' /tmp/ambiguous-investigation.json
           grep -q '"policy_finding_count": 2' /tmp/ambiguous-investigation.json
+      - name: Installed import accounting contract
+        run: python scripts/check_import_report_contract.py
       - name: Backwards-compatible module workflows
         run: |
           python relationship_map.py examples/customer-chain.json validate

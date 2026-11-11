@@ -43,6 +43,7 @@ data-relationship-map = "drm_cli:main"
 py-modules = [
   "csv_adapter",
   "drm_cli",
+  "import_report",
   "relationship_artifacts",
   "relationship_diff",
   "relationship_handoff",

@@ -1,0 +1,3 @@
+{
+  "node_sources": [{"file": "nodes.csv", "id": "{ID}", "label": "{LABEL}", "system": "demo", "object": "customer"}]
+}

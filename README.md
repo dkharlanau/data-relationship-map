@@ -8,6 +8,10 @@ It is designed for the practical investigation question:
 
 > **How is this object connected across systems, where did the relationship come from, what is ambiguous or broken, what can it affect downstream, and when was that relationship state actually observed?**
 
+XLSX imports reject ambiguous row/cell positions before constructing identities.
+See the [synthetic coordinate examples](examples/xlsx-layout/README.md) and
+[accounting limits](docs/import-accounting.md#xlsx-coordinate-integrity).
+
 ## Try it
 
 Requires Python 3.10+.
@@ -86,6 +90,66 @@ value. XLSX imports reject populated cells beyond the header. These checks preve
 columns from silently disappearing before identity and lineage analysis. CSV row
 provenance points to the physical starting line, including after multiline quoted
 values or blank lines.
+
+A non-empty source row must produce a non-empty node `id` or both relationship
+endpoints (`from` and `to`). Otherwise the import stops with the file and source
+row (also the worksheet for XLSX), exits with code 2, and leaves an existing
+output file unchanged. Wholly blank rows are ignored. Remove intentionally
+excluded records from the source export explicitly; a blank ID is not a filter.
+Without an explicit component contract, this check validates the complete
+rendered identity: `CUSTOMER:{ID}` can still render `CUSTOMER:` when `ID` is
+blank. Declare the required source columns when a prefix is not a usable key.
+
+To see the failure on synthetic data, run
+`data-relationship-map import-csv examples/csv/missing-identity/manifest.json`.
+It reports the missing node ID on line 3 rather than returning only the first
+customer. Fill that ID in the source export before building a handoff.
+
+### Protect the parts of a composite identity
+
+An identifier such as `S4:100:` is not empty, but it may still be missing the
+customer number your investigation needs. Tell the adapter which columns must
+be present and non-blank on each populated row:
+
+```json
+{
+  "file": "customers.csv",
+  "id": "{SYSTEM}:{CLIENT}:{ID}",
+  "system": "{SYSTEM}",
+  "object": "customer",
+  "required_identity_columns": ["SYSTEM", "CLIENT", "ID"]
+}
+```
+
+Place this declaration on each applicable `node_sources` or
+`relationship_sources` entry. For a relationship it can name columns used by
+both `from` and `to`. The same declaration works for XLSX sources with a `sheet`.
+It checks header presence even when there are no data rows, and checks values
+after the existing XLSX normalizers. CSV header names remain exact; XLSX header
+names retain the adapter's existing trimming behavior. A string, null, duplicate
+name or blank name in place of a proper array is an error. An omitted declaration
+or an empty array adds no component checks.
+
+Run the synthetic example:
+
+```bash
+data-relationship-map import-csv examples/csv/composite-identity/valid.json \
+  --output customer-model.json
+data-relationship-map import-csv examples/csv/composite-identity/missing-id.json \
+  --output customer-model.json
+```
+
+The first import retains `S4:100:0004711`, `S4:200:0004711`, and `S4:100:0`
+as three distinct string IDs. The second exits 2 on line 3 because `ID` is
+blank, before overwriting that output. Check the exit code: a retained file is
+the previous result, not evidence that the failed import succeeded. Error text
+identifies the file, row/sheet and column names, without echoing the row values.
+
+This is an explicit input completeness check, not a SAP key definition, automatic
+normalization, proof of identity, cardinality approval, or complete import-row
+ledger. Choose columns from the agreed export contract. Wholly blank padding
+remains ignored; optional fields can stay blank. Leading zeros and zero IDs stay
+text unless an existing explicitly requested XLSX normalizer changes them.
 
 CSV:
 
@@ -296,3 +360,7 @@ Created and maintained by **Dzmitryi Kharlanau**, an SAP consultant and system a
 
 - [Website and knowledge base](https://dkharlanau.github.io/)
 - [LinkedIn](https://www.linkedin.com/in/dkharlanau/)
+
+## Optional import accounting
+
+Use `--import-report report.json` with `import-csv` or `import-xlsx` to retain per-source record dispositions alongside the unchanged canonical graph. Partial failure reports are explicitly incomplete and do not authorize using a retained old graph. See [the counting rules and synthetic example](docs/import-accounting.md).

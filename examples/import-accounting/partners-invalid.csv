@@ -1,0 +1,4 @@
+SYSTEM,CLIENT,SOLD_TO,SHIP_TO,SALES_ORG,NOTE
+S4,100,0004711,0005000,1000,Valid prefix
+S4,100,0004711,,1000,Missing endpoint must stop the import
+S4,100,0004711,0005001,1000,Not visited after rejection
