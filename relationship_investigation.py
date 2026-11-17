@@ -11,7 +11,7 @@ from typing import Any
 
 from relationship_lineage import traverse
 from relationship_map import analyze, load_model
-from relationship_policy import evaluate, load_policy
+from relationship_policy import PolicyValidationError, evaluate, load_policy
 
 SCHEMA_VERSION = "0.1"
 
@@ -300,14 +300,17 @@ def main() -> int:
     parser.add_argument("--html")
     args = parser.parse_args()
 
-    report = build_investigation(
-        load_model(args.model),
-        policy=load_policy(args.policy) if args.policy else None,
-        focus=args.focus,
-        max_depth=args.max_depth,
-        stop_systems=set(args.stop_system),
-        stop_objects=set(args.stop_object),
-    )
+    try:
+        report = build_investigation(
+            load_model(args.model),
+            policy=load_policy(args.policy) if args.policy else None,
+            focus=args.focus,
+            max_depth=args.max_depth,
+            stop_systems=set(args.stop_system),
+            stop_objects=set(args.stop_object),
+        )
+    except PolicyValidationError as exc:
+        parser.error(str(exc))
 
     if args.json_output:
         Path(args.json_output).parent.mkdir(parents=True, exist_ok=True)
