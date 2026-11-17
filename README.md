@@ -26,6 +26,10 @@ data-relationship-map policy examples/customer-chain.json examples/identity-poli
 
 The installed command is a thin dispatcher over the same deterministic modules used by CI. Existing `python relationship_*.py ...` workflows remain supported.
 
+Supplied cardinality policies are validated before results are written: misspelled
+fields, ambiguous JSON and non-integer limits stop with exit 2 rather than silently
+weakening the checks. See the [policy contract and synthetic refusal](docs/policy-contract.md).
+
 ## Start with one investigation report
 
 The primary review surface combines structural diagnostics, explicit identity/cardinality policy, bounded upstream/downstream lineage and source provenance:

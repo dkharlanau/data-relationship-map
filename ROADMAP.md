@@ -19,6 +19,7 @@
 - normalized identity collision diagnostics
 - conflicting metadata detection for repeated IDs
 - explicit relationship-cardinality policy
+- strict policy input validation before investigation/artifact/handoff writes, without coercion or silent unknown fields
 - one-to-many / many-to-one ambiguity diagnostics
 - graph snapshot diff with relationship/orphan drift
 - stable `eac://` references for objects, relationships, and policy findings
