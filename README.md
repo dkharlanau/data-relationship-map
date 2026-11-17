@@ -62,7 +62,7 @@ data-relationship-map handoff build examples/customer-chain.json \
 data-relationship-map handoff verify build/customer-handoff
 ```
 
-The handoff contains the bounded canonical graph, the same investigation as JSON, Markdown and standalone HTML, a bounded `artifact-index.json`, and a manifest with a deterministic `pack_id`, byte counts and SHA-256 hashes. Verification checks every retained file and recomputes semantic identity. Unrelated nodes and findings are excluded; invalid models and unknown focus objects fail before a pack is written. Version `0.2` packs add the artifact index, while the verifier continues to accept retained `0.1` packs.
+The handoff contains the bounded canonical graph, the same investigation as JSON, Markdown and standalone HTML, a bounded `artifact-index.json`, and a manifest with a deterministic `pack_id`, byte counts and SHA-256 hashes. Verification checks the format's required files and recomputes semantic identity from the same captured bytes. It rejects malformed or ambiguous JSON, invalid manifest entries and direct symlink/non-regular members. Unrelated nodes and findings are excluded; invalid models and unknown focus objects fail before a pack is written. Version `0.2` packs add the artifact index, while the verifier continues to accept retained `0.1` packs. See [verification scope and stop conditions](docs/handoff-verification.md): integrity is not authorship, policy replay or business approval.
 
 The [public synthetic handoff](https://dkharlanau.github.io/data-relationship-map/demo/handoff/investigation.html) can be reviewed in a browser. Its [manifest](https://dkharlanau.github.io/data-relationship-map/demo/handoff/manifest.json), [bounded graph](https://dkharlanau.github.io/data-relationship-map/demo/handoff/graph.json), and [artifact index](https://dkharlanau.github.io/data-relationship-map/demo/handoff/artifact-index.json) show the exact retained scope and machine handoff.
 
@@ -79,6 +79,11 @@ project-evidence-graph analyze build/project-relationship-evidence.json
 ```
 
 Project Evidence Graph preserves the producer observation time, represents observed objects and relationships as evidence, and represents failed relationship-policy findings as externally owned defects. It does not automatically attach them to a requirement or change; that bridge remains an explicit project-owned decision.
+
+For an executable synthetic workflow with explicit stop conditions, see the
+[DRM → PEG handoff rehearsal](docs/project-evidence-rehearsal.md). It separates
+a successful import from a preserved old graph after failure, and retains native
+findings even when a graph-only PEG review passes.
 
 Run the two installed CLIs in separate virtual environments. Both MVP packages currently expose generic top-level Python module names, so a shared environment can create import-name collisions. The handoff is the verified JSON file contract between those environments; install order is not part of that contract.
 
