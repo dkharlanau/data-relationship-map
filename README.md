@@ -369,3 +369,11 @@ Created and maintained by **Dzmitryi Kharlanau**, an SAP consultant and system a
 ## Optional import accounting
 
 Use `--import-report report.json` with `import-csv` or `import-xlsx` to retain per-source record dispositions alongside the unchanged canonical graph. Partial failure reports are explicitly incomplete and do not authorize using a retained old graph. See [the counting rules and synthetic example](docs/import-accounting.md).
+
+## License notice
+
+Use the repository’s [LICENSE](LICENSE) as the source of its license notice.
+The package includes that file rather than assigning a different shorthand
+license to the project. This metadata correction does not change the notice
+or grant additional rights. Read the notice and the terms it references before
+using or redistributing the project.
