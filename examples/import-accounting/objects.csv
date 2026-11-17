@@ -1,0 +1,6 @@
+SYSTEM,CLIENT,ID,LABEL
+S4,100,0004711,Sold-to
+S4,200,0004711,Same display number in another client
+S4,100,0005000,Ship-to North
+S4,100,0005001,Ship-to South
+MDG,100,0009001,Governed partner

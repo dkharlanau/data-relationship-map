@@ -6,6 +6,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
+import re
+import stat
 import sys
 from pathlib import Path
 from typing import Any
@@ -163,63 +166,119 @@ def build_handoff(
     return manifest
 
 
+def _strict_object(data: bytes) -> dict[str, Any]:
+    """Parse a single unambiguous, finite JSON object without echoing its contents."""
+    def object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("repeated JSON member")
+            result[key] = value
+        return result
+
+    def finite_float(value: str) -> float:
+        result = float(value)
+        if not math.isfinite(result):
+            raise ValueError("non-finite JSON number")
+        return result
+
+    def reject_constant(value: str) -> Any:
+        raise ValueError("non-finite JSON constant")
+
+    result = json.loads(
+        data.decode("utf-8"), object_pairs_hook=object_pairs,
+        parse_float=finite_float, parse_constant=reject_constant,
+    )
+    if not isinstance(result, dict):
+        raise ValueError("JSON root must be an object")
+    return result
+
+
+def _read_regular_bytes(path: Path) -> bytes:
+    # Reject direct symlinks, directories, devices and pipes before opening them.
+    # This is not an atomic filesystem snapshot or a concurrent-writer sandbox.
+    if not stat.S_ISREG(path.lstat().st_mode):
+        raise ValueError("handoff member must be a regular file")
+    return path.read_bytes()
+
+
 def verify_handoff(output_dir: str | Path) -> dict[str, Any]:
+    """Verify required captured bytes and pack identity, not evidence authority."""
     destination = Path(output_dir)
     errors: list[dict[str, Any]] = []
-    try:
-        manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        return {"valid": False, "pack_id": None, "errors": [{"kind": "invalid_manifest", "detail": str(exc)}]}
+    pack_id: str | None = None
 
-    schema_version = str(manifest.get("schema_version", "0.1"))
+    def invalid(kind: str) -> dict[str, Any]:
+        return {"valid": False, "pack_id": pack_id, "errors": [{"kind": kind}]}
+
+    try:
+        manifest = _strict_object(_read_regular_bytes(destination / "manifest.json"))
+    except (OSError, ValueError, RecursionError):
+        return invalid("invalid_manifest")
+
+    candidate_id = manifest.get("pack_id")
+    if not isinstance(candidate_id, str) or not re.fullmatch(
+        r"relationship-handoff-[0-9a-f]{24}", candidate_id
+    ):
+        return invalid("invalid_pack_id")
+    pack_id = candidate_id
+    # A missing version remains compatible with the original 0.1 format.
+    schema_version = manifest.get("schema_version", "0.1")
     if schema_version == "0.2":
         pack_files = PACK_FILES
     elif schema_version == "0.1":
         pack_files = LEGACY_PACK_FILES
     else:
-        return {
-            "valid": False,
-            "pack_id": manifest.get("pack_id"),
-            "errors": [{"kind": "unsupported_schema_version", "schema_version": schema_version}],
-        }
+        return invalid("unsupported_schema_version")
 
+    entries = manifest.get("files")
+    if not isinstance(entries, dict) or set(entries) != set(pack_files):
+        return invalid("invalid_manifest_files")
     for name in pack_files:
-        path = destination / name
-        expected = (manifest.get("files") or {}).get(name)
-        if not isinstance(expected, dict):
-            errors.append({"kind": "missing_manifest_entry", "file": name})
+        expected = entries[name]
+        if (not isinstance(expected, dict)
+                or not isinstance(expected.get("sha256"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", expected["sha256"])
+                or type(expected.get("bytes")) is not int
+                or expected["bytes"] < 0):
+            return invalid("invalid_manifest_entry")
+
+    captured: dict[str, bytes] = {}
+    for name in pack_files:
+        try:
+            data = _read_regular_bytes(destination / name)
+        except (OSError, ValueError):
+            errors.append({"kind": "unreadable_regular_file", "file": name})
             continue
-        if not path.is_file():
-            errors.append({"kind": "missing_file", "file": name})
-            continue
-        actual_hash = _sha256(path)
-        if actual_hash != expected.get("sha256"):
+        captured[name] = data
+        expected = entries[name]
+        if hashlib.sha256(data).hexdigest() != expected["sha256"]:
             errors.append({"kind": "sha256_mismatch", "file": name})
-        if path.stat().st_size != expected.get("bytes"):
+        if len(data) != expected["bytes"]:
             errors.append({"kind": "size_mismatch", "file": name})
 
     if not errors:
-        try:
-            graph = json.loads((destination / "graph.json").read_text(encoding="utf-8"))
-            investigation = json.loads((destination / "investigation.json").read_text(encoding="utf-8"))
-            semantic_payload = {"graph": graph, "investigation": investigation}
-            if schema_version == "0.2":
-                semantic_payload["artifact_index"] = json.loads(
-                    (destination / "artifact-index.json").read_text(encoding="utf-8")
-                )
-            expected_id = "relationship-handoff-" + hashlib.sha256(
-                _canonical_bytes(semantic_payload)
-            ).hexdigest()[:24]
-            if manifest.get("pack_id") != expected_id:
-                errors.append({"kind": "pack_id_mismatch", "expected": expected_id})
-        except (OSError, json.JSONDecodeError) as exc:
-            errors.append({"kind": "invalid_payload", "detail": str(exc)})
+        semantic_payload: dict[str, Any] = {}
+        semantic_files = {"graph": "graph.json", "investigation": "investigation.json"}
+        if schema_version == "0.2":
+            semantic_files["artifact_index"] = "artifact-index.json"
+        for key, name in semantic_files.items():
+            try:
+                semantic_payload[key] = _strict_object(captured[name])
+            except (ValueError, RecursionError):
+                errors.append({"kind": "invalid_payload", "file": name})
+        if not errors:
+            try:
+                expected_id = "relationship-handoff-" + hashlib.sha256(
+                    _canonical_bytes(semantic_payload)
+                ).hexdigest()[:24]
+            except (ValueError, RecursionError):
+                errors.append({"kind": "invalid_payload"})
+            else:
+                if pack_id != expected_id:
+                    errors.append({"kind": "pack_id_mismatch"})
 
-    return {
-        "valid": not errors,
-        "pack_id": manifest.get("pack_id"),
-        "errors": errors,
-    }
+    return {"valid": not errors, "pack_id": pack_id, "errors": errors}
 
 
 def main() -> int:

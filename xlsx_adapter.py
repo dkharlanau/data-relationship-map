@@ -9,25 +9,50 @@ import re
 import zipfile
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterator
+
+from import_report import ImportReport, ImportRecordError, validate_output_paths, write_report, write_text_atomic, IMPORT_ERRORS
 from xml.etree import ElementTree as ET
 
-from csv_adapter import _merge_node, render
+from csv_adapter import (
+    _merge_node, render, required_identity_columns,
+    check_identity_headers, check_identity_values,
+)
 
 
 MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
-CELL_REF = re.compile(r"^([A-Z]+)(\d+)$")
+CELL_REF = re.compile(r"([A-Z]+)([0-9]+)")
+MAX_XLSX_COLUMN = 16384
+MAX_XLSX_ROW = 1048576
+
+
+def _cell_position(cell_ref: str) -> tuple[int, int]:
+    match = CELL_REF.fullmatch(cell_ref.upper())
+    if not match:
+        raise ValueError(f"invalid XLSX cell reference: {cell_ref!r}")
+    column = 0
+    for char in match.group(1):
+        column = column * 26 + (ord(char) - ord("A") + 1)
+    row = int(match.group(2))
+    if not 1 <= column <= MAX_XLSX_COLUMN or not 1 <= row <= MAX_XLSX_ROW:
+        raise ValueError(f"XLSX cell reference outside worksheet limits: {cell_ref!r}")
+    return column - 1, row
 
 
 def _column_index(cell_ref: str) -> int:
-    match = CELL_REF.match(cell_ref.upper())
-    if not match:
-        raise ValueError(f"invalid XLSX cell reference: {cell_ref!r}")
-    value = 0
-    for char in match.group(1):
-        value = value * 26 + (ord(char) - ord("A") + 1)
-    return value - 1
+    return _cell_position(cell_ref)[0]
+
+
+def _row_number(value: str | None, previous: int, location: str) -> int:
+    if value is None or re.fullmatch(r"[0-9]+", value) is None:
+        raise ValueError(f"{location}: adapter requires an explicit decimal row coordinate")
+    number = int(value)
+    if not 1 <= number <= MAX_XLSX_ROW:
+        raise ValueError(f"{location}: row coordinate outside worksheet limits: {value!r}")
+    if number <= previous:
+        raise ValueError(f"{location}: row coordinates must be unique and increasing: {value!r} after {previous}")
+    return number
 
 
 def _shared_strings(book: zipfile.ZipFile) -> list[str]:
@@ -72,11 +97,13 @@ def _cell_value(cell: ET.Element, shared: list[str]) -> str:
             raise ValueError(f"shared string index out of range: {index}")
         return shared[index]
     if cell_type == "b":
+        if not raw.strip():
+            return ""
         return "TRUE" if raw == "1" else "FALSE"
     return raw
 
 
-def read_sheet(path: Path, sheet_name: str) -> Iterator[tuple[int, dict[str, str]]]:
+def read_sheet(path: Path, sheet_name: str, *, required_columns: tuple[str, ...] = (), report: ImportReport | None = None) -> Iterator[tuple[int, dict[str, str]]]:
     with zipfile.ZipFile(path) as book:
         sheets = _sheet_paths(book)
         if sheet_name not in sheets:
@@ -84,15 +111,32 @@ def read_sheet(path: Path, sheet_name: str) -> Iterator[tuple[int, dict[str, str
         shared = _shared_strings(book)
         root = ET.fromstring(book.read(sheets[sheet_name]))
         header: list[str] | None = None
+        previous_row = 0
 
         for row in root.findall(f".//{{{MAIN_NS}}}row"):
-            row_number = int(row.attrib.get("r", "0") or 0)
+            location = f"XLSX {path.name!r}, sheet {sheet_name!r}"
+            row_number = _row_number(row.attrib.get("r"), previous_row, location)
+            previous_row = row_number
+            if report is not None and header is not None:
+                report.row(row_number)
             cells: dict[int, str] = {}
             for cell in row.findall(f"{{{MAIN_NS}}}c"):
                 ref = cell.attrib.get("r")
-                if ref:
-                    cells[_column_index(ref)] = _cell_value(cell, shared)
+                cell_location = f"{location}, row {row_number}"
+                if not ref:
+                    raise ImportRecordError(f"{cell_location}: adapter requires an explicit cell reference", "missing_cell_reference")
+                try:
+                    column, cell_row = _cell_position(ref)
+                except ValueError as exc:
+                    raise ImportRecordError(f"{cell_location}: {exc}", "invalid_cell_reference") from exc
+                if cell_row != row_number:
+                    raise ImportRecordError(f"{cell_location}: cell {ref!r} belongs to row {cell_row}", "cell_row_mismatch")
+                if column in cells:
+                    raise ImportRecordError(f"{cell_location}: duplicate cell coordinate {ref!r}", "duplicate_cell_coordinate")
+                cells[column] = _cell_value(cell, shared)
             if not cells:
+                if report is not None and header is not None:
+                    report.record("skipped", "blank_record")
                 continue
             values = [cells.get(index, "") for index in range(max(cells) + 1)]
             if header is None:
@@ -104,11 +148,15 @@ def read_sheet(path: Path, sheet_name: str) -> Iterator[tuple[int, dict[str, str
                 duplicates = sorted({name for name in header if name and header.count(name) > 1})
                 if duplicates:
                     raise ValueError(f"worksheet {sheet_name!r} has duplicate headers: {duplicates}")
+                check_identity_headers(header, required_columns, f"XLSX {path.name!r}, sheet {sheet_name!r}")
                 continue
             if any(value for value in values[len(header):]):
                 raise ValueError(f"worksheet {sheet_name!r} row {row_number} has values beyond the header")
             padded = values + [""] * max(0, len(header) - len(values))
             yield row_number, {name: padded[index] for index, name in enumerate(header) if name}
+
+        if header is None and required_columns:
+            raise ValueError(f"XLSX {path.name!r}, sheet {sheet_name!r}: required identity columns cannot be checked without a header")
 
 
 def _normalizers(manifest: dict[str, Any], source: dict[str, Any]) -> dict[str, list[str]]:
@@ -149,20 +197,37 @@ def normalize_row(row: dict[str, str], rules: dict[str, list[str]]) -> tuple[dic
     return result, changes
 
 
-def build_model(manifest: dict[str, Any], base_dir: Path) -> dict[str, Any]:
+def build_model(manifest: dict[str, Any], base_dir: Path, *, import_report: dict[str, Any] | None = None) -> dict[str, Any]:
+    report = ImportReport(import_report, "xlsx", manifest)
+    try:
+        model = _build_model(manifest, base_dir, report)
+    except IMPORT_ERRORS as exc:
+        report.abort(exc)
+        raise
+    report.finish()
+    return model
+
+
+def _build_model(manifest: dict[str, Any], base_dir: Path, report: ImportReport) -> dict[str, Any]:
     nodes: dict[str, dict[str, Any]] = {}
     relationships: list[dict[str, Any]] = []
 
-    for source in manifest.get("node_sources", []):
+    for source_index, source in enumerate(manifest.get("node_sources", [])):
+        report.source("node_sources", source_index)
         file_name = source["file"]
         sheet = str(source.get("sheet", "Sheet1"))
         rules = _normalizers(manifest, source)
-        for row_number, raw_row in read_sheet(base_dir / file_name, sheet):
+        columns = required_identity_columns(source, f"XLSX {file_name!r}, sheet {sheet!r}")
+        for row_number, raw_row in read_sheet(base_dir / file_name, sheet, required_columns=columns, report=report):
+            if not any(value.strip() for value in raw_row.values()):
+                report.record("skipped", "blank_record")
+                continue
             row, changes = normalize_row(raw_row, rules)
+            check_identity_values(row, columns, f"XLSX {file_name!r}, sheet {sheet!r}, row {row_number}")
             raw_id = render(source["id"], raw_row).strip()
             node_id = render(source["id"], row).strip()
             if not node_id:
-                continue
+                raise ImportRecordError(f"XLSX {file_name!r}, sheet {sheet!r}, row {row_number}" + ": node id renders empty", "blank_node_id")
             node: dict[str, Any] = {
                 "id": node_id,
                 "system": render(source.get("system", ""), row).strip(),
@@ -175,18 +240,27 @@ def build_model(manifest: dict[str, Any], base_dir: Path) -> dict[str, Any]:
                 source_ref["raw_identity"] = raw_id
             if changes:
                 source_ref["normalization"] = changes
+            disposition = "node_merged" if node_id in nodes else "node_created"
             _merge_node(nodes, node, source_ref)
+            report.record("accepted", disposition, {"kind": "node", "id": node_id})
 
-    for source in manifest.get("relationship_sources", []):
+    for source_index, source in enumerate(manifest.get("relationship_sources", [])):
+        report.source("relationship_sources", source_index)
         file_name = source["file"]
         sheet = str(source.get("sheet", "Sheet1"))
         rules = _normalizers(manifest, source)
-        for row_number, raw_row in read_sheet(base_dir / file_name, sheet):
+        columns = required_identity_columns(source, f"XLSX {file_name!r}, sheet {sheet!r}")
+        for row_number, raw_row in read_sheet(base_dir / file_name, sheet, required_columns=columns, report=report):
+            if not any(value.strip() for value in raw_row.values()):
+                report.record("skipped", "blank_record")
+                continue
             row, changes = normalize_row(raw_row, rules)
+            check_identity_values(row, columns, f"XLSX {file_name!r}, sheet {sheet!r}, row {row_number}")
             from_id = render(source["from"], row).strip()
             to_id = render(source["to"], row).strip()
             if not from_id or not to_id:
-                continue
+                missing = ", ".join(field for field, value in (("from", from_id), ("to", to_id)) if not value)
+                raise ImportRecordError(f"XLSX {file_name!r}, sheet {sheet!r}, row {row_number}" + f": relationship {missing} renders empty", "blank_relationship_endpoint")
             provenance: dict[str, Any] = {"file": file_name, "sheet": sheet, "row": row_number}
             if changes:
                 provenance["normalization"] = changes
@@ -195,6 +269,10 @@ def build_model(manifest: dict[str, Any], base_dir: Path) -> dict[str, Any]:
                 "to": to_id,
                 "type": render(source.get("type", "related_to"), row).strip() or "related_to",
                 "provenance": provenance,
+            })
+            report.record("accepted", "relationship_created", {
+                "kind": "relationship", "index": len(relationships) - 1,
+                "from": from_id, "to": to_id, "type": relationships[-1]["type"],
             })
 
     return {"nodes": list(nodes.values()), "relationships": relationships}
@@ -213,14 +291,34 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Convert XLSX exports into a Data Relationship Map model")
     parser.add_argument("manifest")
     parser.add_argument("--output", "-o")
+    parser.add_argument("--import-report", help="Write versioned per-source row accounting (partial on import error)")
     args = parser.parse_args()
-    manifest, base_dir = load_manifest(args.manifest)
-    model = build_model(manifest, base_dir)
+    try:
+        manifest, base_dir = load_manifest(args.manifest)
+        report = {} if args.import_report else None
+        if args.import_report:
+            validate_output_paths(Path(args.manifest), manifest, base_dir, args.output, args.import_report)
+        try:
+            model = build_model(manifest, base_dir, import_report=report)
+        except IMPORT_ERRORS as exc:
+            if args.import_report and report and report.get("status") == "aborted":
+                write_report(args.import_report, report)
+            raise
+        if args.import_report:
+            write_report(args.import_report, report)
+    except IMPORT_ERRORS as exc:
+        parser.error(str(exc))
     payload = json.dumps(model, indent=2)
-    if args.output:
-        Path(args.output).write_text(payload + "\n", encoding="utf-8")
-    else:
-        print(payload)
+    try:
+        if args.output:
+            if args.import_report:
+                write_text_atomic(args.output, payload + "\n")
+            else:
+                Path(args.output).write_text(payload + "\n", encoding="utf-8")
+        else:
+            print(payload)
+    except OSError as exc:
+        parser.error(str(exc))
     return 0
 
 

@@ -1,0 +1,10 @@
+{
+  "node_sources": [{
+    "file": "valid.csv",
+    "id": "{SYSTEM}:{CLIENT}:{ID}",
+    "system": "{SYSTEM}",
+    "object": "customer",
+    "label": "{LABEL}",
+    "required_identity_columns": ["SYSTEM", "CLIENT", "ID"]
+  }]
+}

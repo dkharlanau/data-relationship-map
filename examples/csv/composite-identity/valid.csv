@@ -1,0 +1,4 @@
+SYSTEM,CLIENT,ID,LABEL
+S4,100,0004711,First namespace
+S4,200,0004711,Second namespace
+S4,100,0,Zero is an identifier

@@ -8,6 +8,10 @@ It is designed for the practical investigation question:
 
 > **How is this object connected across systems, where did the relationship come from, what is ambiguous or broken, what can it affect downstream, and when was that relationship state actually observed?**
 
+XLSX imports reject ambiguous row/cell positions before constructing identities.
+See the [synthetic coordinate examples](examples/xlsx-layout/README.md) and
+[accounting limits](docs/import-accounting.md#xlsx-coordinate-integrity).
+
 ## Try it
 
 Requires Python 3.10+.
@@ -58,7 +62,7 @@ data-relationship-map handoff build examples/customer-chain.json \
 data-relationship-map handoff verify build/customer-handoff
 ```
 
-The handoff contains the bounded canonical graph, the same investigation as JSON, Markdown and standalone HTML, a bounded `artifact-index.json`, and a manifest with a deterministic `pack_id`, byte counts and SHA-256 hashes. Verification checks every retained file and recomputes semantic identity. Unrelated nodes and findings are excluded; invalid models and unknown focus objects fail before a pack is written. Version `0.2` packs add the artifact index, while the verifier continues to accept retained `0.1` packs.
+The handoff contains the bounded canonical graph, the same investigation as JSON, Markdown and standalone HTML, a bounded `artifact-index.json`, and a manifest with a deterministic `pack_id`, byte counts and SHA-256 hashes. Verification checks the format's required files and recomputes semantic identity from the same captured bytes. It rejects malformed or ambiguous JSON, invalid manifest entries and direct symlink/non-regular members. Unrelated nodes and findings are excluded; invalid models and unknown focus objects fail before a pack is written. Version `0.2` packs add the artifact index, while the verifier continues to accept retained `0.1` packs. See [verification scope and stop conditions](docs/handoff-verification.md): integrity is not authorship, policy replay or business approval.
 
 The [public synthetic handoff](https://dkharlanau.github.io/data-relationship-map/demo/handoff/investigation.html) can be reviewed in a browser. Its [manifest](https://dkharlanau.github.io/data-relationship-map/demo/handoff/manifest.json), [bounded graph](https://dkharlanau.github.io/data-relationship-map/demo/handoff/graph.json), and [artifact index](https://dkharlanau.github.io/data-relationship-map/demo/handoff/artifact-index.json) show the exact retained scope and machine handoff.
 
@@ -76,6 +80,11 @@ project-evidence-graph analyze build/project-relationship-evidence.json
 
 Project Evidence Graph preserves the producer observation time, represents observed objects and relationships as evidence, and represents failed relationship-policy findings as externally owned defects. It does not automatically attach them to a requirement or change; that bridge remains an explicit project-owned decision.
 
+For an executable synthetic workflow with explicit stop conditions, see the
+[DRM → PEG handoff rehearsal](docs/project-evidence-rehearsal.md). It separates
+a successful import from a preserved old graph after failure, and retains native
+findings even when a graph-only PEG review passes.
+
 Run the two installed CLIs in separate virtual environments. Both MVP packages currently expose generic top-level Python module names, so a shared environment can create import-name collisions. The handoff is the verified JSON file contract between those environments; install order is not part of that contract.
 
 ## Build the graph from exports
@@ -86,6 +95,66 @@ value. XLSX imports reject populated cells beyond the header. These checks preve
 columns from silently disappearing before identity and lineage analysis. CSV row
 provenance points to the physical starting line, including after multiline quoted
 values or blank lines.
+
+A non-empty source row must produce a non-empty node `id` or both relationship
+endpoints (`from` and `to`). Otherwise the import stops with the file and source
+row (also the worksheet for XLSX), exits with code 2, and leaves an existing
+output file unchanged. Wholly blank rows are ignored. Remove intentionally
+excluded records from the source export explicitly; a blank ID is not a filter.
+Without an explicit component contract, this check validates the complete
+rendered identity: `CUSTOMER:{ID}` can still render `CUSTOMER:` when `ID` is
+blank. Declare the required source columns when a prefix is not a usable key.
+
+To see the failure on synthetic data, run
+`data-relationship-map import-csv examples/csv/missing-identity/manifest.json`.
+It reports the missing node ID on line 3 rather than returning only the first
+customer. Fill that ID in the source export before building a handoff.
+
+### Protect the parts of a composite identity
+
+An identifier such as `S4:100:` is not empty, but it may still be missing the
+customer number your investigation needs. Tell the adapter which columns must
+be present and non-blank on each populated row:
+
+```json
+{
+  "file": "customers.csv",
+  "id": "{SYSTEM}:{CLIENT}:{ID}",
+  "system": "{SYSTEM}",
+  "object": "customer",
+  "required_identity_columns": ["SYSTEM", "CLIENT", "ID"]
+}
+```
+
+Place this declaration on each applicable `node_sources` or
+`relationship_sources` entry. For a relationship it can name columns used by
+both `from` and `to`. The same declaration works for XLSX sources with a `sheet`.
+It checks header presence even when there are no data rows, and checks values
+after the existing XLSX normalizers. CSV header names remain exact; XLSX header
+names retain the adapter's existing trimming behavior. A string, null, duplicate
+name or blank name in place of a proper array is an error. An omitted declaration
+or an empty array adds no component checks.
+
+Run the synthetic example:
+
+```bash
+data-relationship-map import-csv examples/csv/composite-identity/valid.json \
+  --output customer-model.json
+data-relationship-map import-csv examples/csv/composite-identity/missing-id.json \
+  --output customer-model.json
+```
+
+The first import retains `S4:100:0004711`, `S4:200:0004711`, and `S4:100:0`
+as three distinct string IDs. The second exits 2 on line 3 because `ID` is
+blank, before overwriting that output. Check the exit code: a retained file is
+the previous result, not evidence that the failed import succeeded. Error text
+identifies the file, row/sheet and column names, without echoing the row values.
+
+This is an explicit input completeness check, not a SAP key definition, automatic
+normalization, proof of identity, cardinality approval, or complete import-row
+ledger. Choose columns from the agreed export contract. Wholly blank padding
+remains ignored; optional fields can stay blank. Leading zeros and zero IDs stay
+text unless an existing explicitly requested XLSX normalizer changes them.
 
 CSV:
 
@@ -296,3 +365,7 @@ Created and maintained by **Dzmitryi Kharlanau**, an SAP consultant and system a
 
 - [Website and knowledge base](https://dkharlanau.github.io/)
 - [LinkedIn](https://www.linkedin.com/in/dkharlanau/)
+
+## Optional import accounting
+
+Use `--import-report report.json` with `import-csv` or `import-xlsx` to retain per-source record dispositions alongside the unchanged canonical graph. Partial failure reports are explicitly incomplete and do not authorize using a retained old graph. See [the counting rules and synthetic example](docs/import-accounting.md).

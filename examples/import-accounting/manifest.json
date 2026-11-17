@@ -1,0 +1,45 @@
+{
+  "node_sources": [
+    {
+      "file": "objects.csv",
+      "id": "{SYSTEM}:{CLIENT}:{ID}",
+      "system": "{SYSTEM}",
+      "object": "business-partner",
+      "label": "{LABEL}",
+      "required_identity_columns": [
+        "SYSTEM",
+        "CLIENT",
+        "ID"
+      ]
+    }
+  ],
+  "relationship_sources": [
+    {
+      "file": "crosswalk.csv",
+      "from": "{FROM_SYSTEM}:{FROM_CLIENT}:{FROM_ID}",
+      "to": "{TO_SYSTEM}:{TO_CLIENT}:{TO_ID}",
+      "type": "explicit_crosswalk",
+      "required_identity_columns": [
+        "FROM_SYSTEM",
+        "FROM_CLIENT",
+        "FROM_ID",
+        "TO_SYSTEM",
+        "TO_CLIENT",
+        "TO_ID"
+      ]
+    },
+    {
+      "file": "partners.csv",
+      "from": "{SYSTEM}:{CLIENT}:{SOLD_TO}",
+      "to": "{SYSTEM}:{CLIENT}:{SHIP_TO}",
+      "type": "sold_to_ship_to:SALES_ORG={SALES_ORG}",
+      "required_identity_columns": [
+        "SYSTEM",
+        "CLIENT",
+        "SOLD_TO",
+        "SHIP_TO",
+        "SALES_ORG"
+      ]
+    }
+  ]
+}
