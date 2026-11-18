@@ -37,7 +37,17 @@
 - realistic AFS → MDG → S/4 examples
 - unit tests and GitHub Actions CI, including installed-CLI smoke tests
 
-## Now — finding severity and lifecycle policy
+## Now — validate the BP investigation starter
+
+- Reproduce the synthetic starter in docs/bp-starter.md; its automated scenarios
+  are implemented, not independently field-validated.
+- Obtain the three SAP/data practitioner reviews scoped in issue #6.
+- Record unavailable columns, repeated preparation work, wrong inferences and
+  useful next actions before claiming consulting productivity or product fit.
+- Complete the remaining issue #7 export-shape cases, including namespace
+  collision, without treating the current starter as blanket acceptance.
+
+## Next — finding severity and lifecycle policy
 
 1. Add explicit deterministic finding severity/prioritization policy instead of introducing an opaque score.
 2. Give findings a review lifecycle (`open`, `accepted`, `resolved`, `superseded`) without rewriting historical evidence.
