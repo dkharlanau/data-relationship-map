@@ -1,0 +1,8 @@
+{
+  "relationship_rules": {
+    "explicit_crosswalk": {
+      "max_outgoing": 1,
+      "max_incoming": 1
+    }
+  }
+}

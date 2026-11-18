@@ -44,7 +44,7 @@ def _usage() -> str:
         "",
         "Commands:",
         "  validate                 Validate graph structure",
-        "  path                     Find a shortest cross-system identity path",
+        "  path                     Find an undirected connection path (not identity proof)",
     ]
     width = max(len(name) for name in COMMANDS)
     for name, (_, description) in COMMANDS.items():

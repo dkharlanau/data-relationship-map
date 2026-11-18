@@ -1,0 +1,5 @@
+SYSTEM,CLIENT,ID,LABEL
+LEGACY,100,0004711,Sold-to legacy record
+MDG,100,0009001,Sold-to partner
+S4,100,0008001,First ship-to partner
+S4,100,0008002,Second ship-to partner

@@ -1,0 +1,49 @@
+{
+  "node_sources": [
+    {
+      "file": "objects.csv",
+      "id": "{SYSTEM}:{CLIENT}:{ID}",
+      "system": "{SYSTEM}",
+      "object": "business-partner",
+      "label": "{LABEL}",
+      "required_identity_columns": [
+        "SYSTEM",
+        "CLIENT",
+        "ID"
+      ]
+    }
+  ],
+  "relationship_sources": [
+    {
+      "file": "crosswalk.csv",
+      "from": "{SOURCE_SYSTEM}:{SOURCE_CLIENT}:{SOURCE_ID}",
+      "to": "{TARGET_SYSTEM}:{TARGET_CLIENT}:{TARGET_ID}",
+      "type": "explicit_crosswalk",
+      "required_identity_columns": [
+        "SOURCE_SYSTEM",
+        "SOURCE_CLIENT",
+        "SOURCE_ID",
+        "TARGET_SYSTEM",
+        "TARGET_CLIENT",
+        "TARGET_ID"
+      ]
+    },
+    {
+      "file": "partners.csv",
+      "from": "{SOLD_TO_SYSTEM}:{SOLD_TO_CLIENT}:{SOLD_TO_ID}",
+      "to": "{SHIP_TO_SYSTEM}:{SHIP_TO_CLIENT}:{SHIP_TO_ID}",
+      "type": "ship_to_in_sales_area:{SALES_ORG}:{DISTRIBUTION_CHANNEL}:{DIVISION}",
+      "required_identity_columns": [
+        "SOLD_TO_SYSTEM",
+        "SOLD_TO_CLIENT",
+        "SOLD_TO_ID",
+        "SHIP_TO_SYSTEM",
+        "SHIP_TO_CLIENT",
+        "SHIP_TO_ID",
+        "SALES_ORG",
+        "DISTRIBUTION_CHANNEL",
+        "DIVISION"
+      ]
+    }
+  ]
+}
