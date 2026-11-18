@@ -18,6 +18,7 @@
 - optional declared identity-component checks for CSV/XLSX imports, including header-only exports
 - normalized identity collision diagnostics
 - conflicting metadata detection for repeated IDs
+- visible recorded metadata conflicts in investigation and bounded handoff, with contributing-node provenance and no automatic winner
 - explicit relationship-cardinality policy
 - strict policy input validation before investigation/artifact/handoff writes, without coercion or silent unknown fields
 - one-to-many / many-to-one ambiguity diagnostics

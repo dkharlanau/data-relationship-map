@@ -51,6 +51,11 @@ The status is deterministic:
 
 The report does not infer relationships that are absent from the supplied model.
 
+A structurally valid graph can still contain conflicting descriptions of one
+identity. The [synthetic BP conflict review](docs/bp-conflict-review.md) shows both
+supplied labels and contributing source rows, without choosing a winner. Such
+recorded conflicts produce `findings`, not a misleading `clear` report.
+
 ## Package a bounded handoff
 
 An investigation can be reduced to the selected upstream/downstream context and retained as an integrity-checkable pack for another reviewer, tool or agent:
