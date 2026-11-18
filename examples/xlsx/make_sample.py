@@ -18,8 +18,9 @@ def column_name(index: int) -> str:
     return result
 
 
-def build(path: Path) -> None:
-    rows = [
+def build(path: Path, *, rows: list[list[str]] | None = None, sheet_name: str = "Crosswalk") -> None:
+    """Write synthetic inline-string cells; preserve IDs without numeric coercion."""
+    rows = rows if rows is not None else [
         ["AFS_KUNNR", "MDG_BP", "S4_BP"],
         ["0004711", "7200311", "10000345"],
         ["0004712", "7200312", "10000346"],
@@ -41,7 +42,7 @@ def build(path: Path) -> None:
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
         'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-        '<sheets><sheet name="Crosswalk" sheetId="1" r:id="rId1"/></sheets></workbook>'
+        f'<sheets><sheet name="{html.escape(sheet_name, quote=True)}" sheetId="1" r:id="rId1"/></sheets></workbook>'
     )
     workbook_rels = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'

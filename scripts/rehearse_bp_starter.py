@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -69,6 +70,12 @@ def fixture_cases():
              crosswalk=crosswalk[:1] + [second_link], partners=partners[:1],
              status="clear", observed=AFTER_TIME,
              action="A locally clear snapshot still changed its target; decide whether the change was intended."),
+        dict(name="separate_client_namespaces",
+             objects=objects[:3] + [["LEGACY", "200", "0004711", "Other client account"],
+                                   ["MDG", "200", "0009001", "Other client partner"]],
+             crosswalk=crosswalk + [["LEGACY", "200", "0004711", "MDG", "200", "0009001"]],
+             partners=partners[:1], status="clear", observed=BEFORE_TIME,
+             action="Keep identical display IDs in different supplied client namespaces separate."),
         dict(name="valid_partner_assignment", objects=objects, crosswalk=crosswalk,
              partners=partners, status="clear", observed=BEFORE_TIME,
              action="Keep partner assignments separate from identity claims, even when a connection exists."),
@@ -76,13 +83,43 @@ def fixture_cases():
 
 
 class Starter:
-    def __init__(self, command, output):
+    def __init__(self, command, output, *, source_format="csv"):
+        require(source_format in ("csv", "xlsx"), "Unsupported source format.")
         require(bool(command), "A trusted DRM command is required.")
+        self.source_format = source_format
         self.command = list(map(str, command))
         # Never reuse or clear an existing directory, including a symlink.
         self.output = Path(output).absolute()
         self.output.mkdir(parents=True, exist_ok=False)
         self.commands = []
+
+    def source_ref(self, name, row):
+        ref = {"file": f"{name}.{self.source_format}", "row": row}
+        if self.source_format == "xlsx":
+            ref["sheet"] = name
+        return ref
+
+    def write_source(self, directory, name, rows):
+        destination = directory / f"{name}.{self.source_format}"
+        if self.source_format == "csv":
+            with destination.open("w", newline="", encoding="utf-8") as handle:
+                csv.writer(handle, lineterminator="\n").writerows(rows)
+        else:
+            # Reuse the repository's existing dependency-free synthetic writer.
+            source = SOURCE.parents[1] / "examples/xlsx/make_sample.py"
+            spec = importlib.util.spec_from_file_location("bp_synthetic_xlsx", source)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            module.build(destination, rows=rows, sheet_name=name)
+
+    def manifest(self):
+        manifest = read(SOURCE / "manifest.json")
+        if self.source_format == "xlsx":
+            for group in ("node_sources", "relationship_sources"):
+                for entry in manifest[group]:
+                    stem = Path(entry["file"]).stem
+                    entry.update(file=stem + ".xlsx", sheet=stem)
+        return manifest
 
     def call(self, args, expected=0):
         env = dict(os.environ)
@@ -104,12 +141,11 @@ class Starter:
             d = self.output / case["name"]
             d.mkdir()
             for name in ("objects", "crosswalk", "partners"):
-                with (d / (name + ".csv")).open("w", newline="", encoding="utf-8") as handle:
-                    csv.writer(handle, lineterminator="\n").writerows(case[name])
-            write(d / "manifest.json", read(SOURCE / "manifest.json"))
+                self.write_source(d, name, case[name])
+            write(d / "manifest.json", self.manifest())
             write(d / "policy.json", read(SOURCE / "policy.json"))
             graph, accounting = d / "graph.json", d / "import-report.json"
-            self.call(["import-csv", d / "manifest.json", "--output", graph,
+            self.call(["import-" + self.source_format, d / "manifest.json", "--output", graph,
                        "--import-report", accounting])
             imported = read(accounting)
             count = sum(len(case[name]) - 1 for name in ("objects", "crosswalk", "partners"))
@@ -130,13 +166,17 @@ class Starter:
             if case["name"] == "metadata_conflict":
                 require(summary.get("metadata_conflict_count") == 1, "Expected one recorded label conflict.")
                 require(report["metadata_conflicts"][0]["contributing_node_provenance"] ==
-                        [{"file": "objects.csv", "row": 2}, {"file": "objects.csv", "row": 4}],
+                        [self.source_ref("objects", 2), self.source_ref("objects", 4)],
                         "Contributing node provenance changed.")
             if case["name"] == "orphan":
                 require(report["structural"]["orphans"] == [NEXT_BP], "Expected unlinked target object.")
             model = read(graph)
-            require(model["relationships"][0]["provenance"] == {"file": "crosswalk.csv", "row": 2},
+            require(model["relationships"][0]["provenance"] == self.source_ref("crosswalk", 2),
                     "Source crosswalk row not retained.")
+            if case["name"] == "separate_client_namespaces":
+                require({n["id"] for n in model["nodes"]} ==
+                        {FOCUS, BP, "LEGACY:200:0004711", "MDG:200:0009001"},
+                        "Supplied client namespaces or leading zeros were lost.")
             pack = d / "handoff"
             self.call(["handoff", "build", graph, pack, "--focus", FOCUS, "--max-depth", "2",
                        "--policy", d / "policy.json", "--observed-at", case["observed"]],
@@ -154,6 +194,9 @@ class Starter:
                     require(retained["status"] == "clear" and
                             NEXT_BP not in {n["id"] for n in read(pack / "graph.json")["nodes"]},
                             "Expected orphan outside focused handoff.")
+                if case["name"] == "separate_client_namespaces":
+                    require({n["id"] for n in read(pack / "graph.json")["nodes"]} == {FOCUS, BP},
+                            "Another client entered the focused handoff.")
                 bounded = dict(status=retained["status"], pack_id=retained["pack_id"],
                                observed_at=index["observed_at"], integrity=True)
             rows.append(dict(case=case["name"], source_rows=count, import_complete=True,
@@ -175,25 +218,26 @@ class Starter:
         failed = self.output / "failed_refresh"
         failed.mkdir()
         (failed / "graph.json").write_bytes((before / "graph.json").read_bytes())
-        for name in ("manifest.json", "objects.csv", "crosswalk.csv", "partners.csv"):
+        for name in ("manifest.json", *[f"{name}.{self.source_format}" for name in ("objects", "crosswalk", "partners")]):
             (failed / name).write_bytes((before / name).read_bytes())
-        (failed / "objects.csv").write_text("SYSTEM,CLIENT,ID,LABEL\nLEGACY,100,,Missing source ID\n", encoding="utf-8")
+        self.write_source(failed, "objects", [["SYSTEM", "CLIENT", "ID", "LABEL"],
+                                             ["LEGACY", "100", "", "Missing source ID"]])
         old_hash = digest(failed / "graph.json")
-        self.call(["import-csv", failed / "manifest.json", "--output", failed / "graph.json",
+        self.call(["import-" + self.source_format, failed / "manifest.json", "--output", failed / "graph.json",
                    "--import-report", failed / "import-report.json"], 2)
         aborted = read(failed / "import-report.json")
         require(aborted["complete"] is False and aborted["model_returned"] is False,
                 "Expected incomplete import.")
         require(old_hash == digest(failed / "graph.json"), "Failed refresh overwrote the old graph.")
         require(not (failed / "handoff").exists(), "Aborted import reached downstream work.")
-        result = dict(status="passed", cases=rows, cli_invocations=len(self.commands),
+        result = dict(status="passed", source_format=self.source_format, cases=rows, cli_invocations=len(self.commands),
                       snapshot_comparison=dict(before="clear_crosswalk", after="changed_crosswalk",
                                                authored_before=BEFORE_TIME, authored_after=AFTER_TIME,
                                                artifact="snapshot-diff.json"),
                       partner_connection=dict(unrestricted=unrestricted, crosswalk_only=selected),
                       failed_refresh=dict(status=aborted["status"], old_graph_unchanged=True,
                                           old_graph_revalidated=False, downstream_calls=0),
-                      limits=["Synthetic CSV cases and authored observation times, not live SAP.",
+                      limits=["Synthetic export cases and authored observation times, not live SAP.",
                               "Found connection, policy result and byte integrity are not business approval.",
                               "Import report is separate from the verified handoff.",
                               "No PEG consumer invoked; retained handoff is the boundary.",
@@ -217,11 +261,13 @@ class Starter:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--drm-cli", type=Path, required=True, help="Trusted installed data-relationship-map executable")
+    parser.add_argument("--format", choices=("csv", "xlsx"), default="csv",
+                        help="Generate CSV or inline-string XLSX exports from the same synthetic cells")
     parser.add_argument("--output", type=Path, required=True, help="New output directory, never overwritten")
     args = parser.parse_args()
     try:
         executable = args.drm_cli.resolve(strict=True)
-        result = Starter([executable], args.output).run()
+        result = Starter([executable], args.output, source_format=args.format).run()
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired):
         print("BP starter did not complete; inspect retained outputs. No existing directory is cleared.", file=sys.stderr)
         return 2
