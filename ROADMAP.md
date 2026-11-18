@@ -14,6 +14,7 @@
 - multi-source manifests that merge several crosswalk/partner/org extracts into one canonical investigation model
 - composite ID templates and explicit key normalization
 - file/sheet/row provenance
+- graph-only and report-enabled import output guards against overwriting declared inputs through existing path aliases
 - optional per-source import accounting with explicit partial failure reports (source-declaration counting, not collect-all quarantine)
 - optional declared identity-component checks for CSV/XLSX imports, including header-only exports
 - strict declared XLSX normalizer shapes/operations and header checks, including header-only exports

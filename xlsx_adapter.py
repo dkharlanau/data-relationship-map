@@ -329,8 +329,7 @@ def main() -> int:
     try:
         manifest, base_dir = load_manifest(args.manifest)
         report = {} if args.import_report else None
-        if args.import_report:
-            validate_output_paths(Path(args.manifest), manifest, base_dir, args.output, args.import_report)
+        validate_output_paths(Path(args.manifest), manifest, base_dir, args.output, args.import_report)
         try:
             model = build_model(manifest, base_dir, import_report=report)
         except IMPORT_ERRORS as exc:

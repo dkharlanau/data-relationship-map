@@ -161,3 +161,27 @@ The CLI exits 2, emits no complete new model and retains an existing graph file
 when an import fails. This does not verify the old graph or make graph and report
 a transactional pair. The same rejection applies when no sidecar is requested.
 See the executable [coordinate examples](../examples/xlsx-layout/README.md).
+
+
+## Protect input files even without a sidecar
+
+The graph-only import route uses the same input/output alias guard as an import
+with accounting. The graph and sidecar must differ from every declared source
+and the manifest, and from each other. Existing symlinks, parent-directory
+symlinks, relative aliases and hardlinks are compared before source rows are
+read. If the check fails, exit 2 leaves existing graph/report/input bytes intact;
+there is no partial-import ledger because import did not start.
+
+For example, keep a synthetic export under an input directory and choose a
+separate output name:
+
+```bash
+data-relationship-map import-csv examples/csv/manifest.json \
+  --output /tmp/customer-relationship-graph.json
+```
+
+An explicitly chosen unrelated output remains replaceable. The check is not an
+atomic transaction, a sandbox or a defence against another process swapping
+paths after validation. It cannot protect a shell redirect that truncates an
+input before the program starts. Prefer --output over redirection, preserve
+original extracts and never infer that a retained old graph was revalidated.
