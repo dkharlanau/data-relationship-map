@@ -1,0 +1,14 @@
+{
+  "node_sources": [
+    {
+      "file": "header-only.xlsx",
+      "sheet": "Data",
+      "id": "BP:{ID}",
+      "normalizers": {
+        "ID": {
+          "upper": false
+        }
+      }
+    }
+  ]
+}

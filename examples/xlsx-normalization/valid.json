@@ -1,0 +1,12 @@
+{
+  "node_sources": [
+    {
+      "file": "data.xlsx",
+      "sheet": "Data",
+      "id": "BP:{ID}",
+      "normalizers": {
+        "ID": "strip_leading_zeros"
+      }
+    }
+  ]
+}

@@ -16,6 +16,7 @@
 - file/sheet/row provenance
 - optional per-source import accounting with explicit partial failure reports (source-declaration counting, not collect-all quarantine)
 - optional declared identity-component checks for CSV/XLSX imports, including header-only exports
+- strict declared XLSX normalizer shapes/operations and header checks, including header-only exports
 - normalized identity collision diagnostics
 - conflicting metadata detection for repeated IDs
 - visible recorded metadata conflicts in investigation and bounded handoff, with contributing-node provenance and no automatic winner

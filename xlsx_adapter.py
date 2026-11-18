@@ -25,6 +25,7 @@ PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 CELL_REF = re.compile(r"([A-Z]+)([0-9]+)")
 MAX_XLSX_COLUMN = 16384
 MAX_XLSX_ROW = 1048576
+NORMALIZER_RULES = frozenset({"strip", "upper", "lower", "strip_leading_zeros"})
 
 
 def _cell_position(cell_ref: str) -> tuple[int, int]:
@@ -103,7 +104,7 @@ def _cell_value(cell: ET.Element, shared: list[str]) -> str:
     return raw
 
 
-def read_sheet(path: Path, sheet_name: str, *, required_columns: tuple[str, ...] = (), report: ImportReport | None = None) -> Iterator[tuple[int, dict[str, str]]]:
+def read_sheet(path: Path, sheet_name: str, *, required_columns: tuple[str, ...] = (), normalized_columns: tuple[str, ...] = (), report: ImportReport | None = None) -> Iterator[tuple[int, dict[str, str]]]:
     with zipfile.ZipFile(path) as book:
         sheets = _sheet_paths(book)
         if sheet_name not in sheets:
@@ -149,22 +150,48 @@ def read_sheet(path: Path, sheet_name: str, *, required_columns: tuple[str, ...]
                 if duplicates:
                     raise ValueError(f"worksheet {sheet_name!r} has duplicate headers: {duplicates}")
                 check_identity_headers(header, required_columns, f"XLSX {path.name!r}, sheet {sheet_name!r}")
+                missing = [field for field in normalized_columns if field not in header]
+                if missing:
+                    raise ValueError(f"{location}: normalizer references missing column(s) {missing!r}")
                 continue
             if any(value for value in values[len(header):]):
                 raise ValueError(f"worksheet {sheet_name!r} row {row_number} has values beyond the header")
             padded = values + [""] * max(0, len(header) - len(values))
             yield row_number, {name: padded[index] for index, name in enumerate(header) if name}
 
+        if header is None and normalized_columns:
+            raise ValueError(f"XLSX {path.name!r}, sheet {sheet_name!r}: normalizer columns cannot be checked without a header")
         if header is None and required_columns:
             raise ValueError(f"XLSX {path.name!r}, sheet {sheet_name!r}: required identity columns cannot be checked without a header")
 
 
+def _normalizer_collection(value: Any, location: str) -> dict[str, list[str]]:
+    if not isinstance(value, dict):
+        raise ValueError(f"{location} must be an object mapping column names to rules")
+    result: dict[str, list[str]] = {}
+    for field, operations in value.items():
+        if not isinstance(field, str) or not field.strip():
+            raise ValueError(f"{location} requires nonblank string column names")
+        if isinstance(operations, str):
+            rules = [operations]
+        elif isinstance(operations, list):
+            rules = list(operations)
+        else:
+            raise ValueError(f"{location}[{field!r}] must be a rule string or list of rule strings")
+        for rule in rules:
+            if not isinstance(rule, str) or rule not in NORMALIZER_RULES:
+                raise ValueError(f"{location}[{field!r}] contains an unsupported normalizer; "
+                                 f"expected one of {sorted(NORMALIZER_RULES)}")
+        result[field] = rules
+    return result
+
+
 def _normalizers(manifest: dict[str, Any], source: dict[str, Any]) -> dict[str, list[str]]:
     result: dict[str, list[str]] = {}
-    for collection in (manifest.get("normalizers", {}), source.get("normalizers", {})):
-        for field, value in collection.items():
-            rules = [value] if isinstance(value, str) else list(value)
-            result.setdefault(str(field), []).extend(str(rule) for rule in rules)
+    for value, location in ((manifest.get("normalizers", {}), "manifest.normalizers"),
+                            (source.get("normalizers", {}), "source.normalizers")):
+        for field, rules in _normalizer_collection(value, location).items():
+            result.setdefault(field, []).extend(rules)
     return result
 
 
@@ -212,13 +239,19 @@ def _build_model(manifest: dict[str, Any], base_dir: Path, report: ImportReport)
     nodes: dict[str, dict[str, Any]] = {}
     relationships: list[dict[str, Any]] = []
 
+    # Validate declarations before opening any workbook, including empty imports.
+    _normalizers(manifest, {})
+    for group in ("node_sources", "relationship_sources"):
+        for source in manifest.get(group, []):
+            _normalizers(manifest, source)
+
     for source_index, source in enumerate(manifest.get("node_sources", [])):
         report.source("node_sources", source_index)
         file_name = source["file"]
         sheet = str(source.get("sheet", "Sheet1"))
         rules = _normalizers(manifest, source)
         columns = required_identity_columns(source, f"XLSX {file_name!r}, sheet {sheet!r}")
-        for row_number, raw_row in read_sheet(base_dir / file_name, sheet, required_columns=columns, report=report):
+        for row_number, raw_row in read_sheet(base_dir / file_name, sheet, required_columns=columns, normalized_columns=tuple(rules), report=report):
             if not any(value.strip() for value in raw_row.values()):
                 report.record("skipped", "blank_record")
                 continue
@@ -250,7 +283,7 @@ def _build_model(manifest: dict[str, Any], base_dir: Path, report: ImportReport)
         sheet = str(source.get("sheet", "Sheet1"))
         rules = _normalizers(manifest, source)
         columns = required_identity_columns(source, f"XLSX {file_name!r}, sheet {sheet!r}")
-        for row_number, raw_row in read_sheet(base_dir / file_name, sheet, required_columns=columns, report=report):
+        for row_number, raw_row in read_sheet(base_dir / file_name, sheet, required_columns=columns, normalized_columns=tuple(rules), report=report):
             if not any(value.strip() for value in raw_row.values()):
                 report.record("skipped", "blank_record")
                 continue
