@@ -417,6 +417,19 @@ Created and maintained by **Dzmitryi Kharlanau**, an SAP consultant and system a
 - [Website and knowledge base](https://dkharlanau.github.io/)
 - [LinkedIn](https://www.linkedin.com/in/dkharlanau/)
 
+## Keep imported exports separate from output
+
+Both import commands reject an `--output` path that aliases the manifest or any
+declared source file, including existing symlinks and hardlinks. This protection
+is active with or without `--import-report`; a rejected destination returns exit
+2 before reading source rows or writing a graph/report. Use a separate graph
+path. No report is fabricated for this pre-import configuration refusal.
+
+This checks ordinary local paths, not concurrent path replacement or shell
+redirection. In particular, do not redirect stdout with `>` onto an input file:
+the shell may truncate it before DRM starts. An unrelated existing output can
+still be replaced by an explicit `--output` request.
+
 ## Optional import accounting
 
 Use `--import-report report.json` with `import-csv` or `import-xlsx` to retain per-source record dispositions alongside the unchanged canonical graph. Partial failure reports are explicitly incomplete and do not authorize using a retained old graph. See [the counting rules and synthetic example](docs/import-accounting.md).

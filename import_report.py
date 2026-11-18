@@ -106,18 +106,24 @@ class ImportReport:
 
 
 def validate_output_paths(manifest_path: Path, manifest: dict[str, Any], base_dir: Path,
-                          output_path: str | None, report_path: str) -> None:
-    """Reject existing aliases, including hardlinks, before writing either output.
+                          output_path: str | None, report_path: str | None = None) -> None:
+    """Reject existing aliases before graph-only, report-only or paired output.
 
     This is an ordinary local-file guard, not a guarantee against concurrent
     path replacement by another process.
     """
+    outputs = ([Path(report_path)] if report_path else []) + ([Path(output_path)] if output_path else [])
+    if not outputs:
+        return
     inputs = [manifest_path] + [base_dir / spec["file"]
                                 for kind in ("node_sources", "relationship_sources")
                                 for spec in manifest.get(kind, [])]
-    outputs = [Path(report_path)] + ([Path(output_path)] if output_path else [])
     def aliases(a: Path, b: Path) -> bool:
-        return a.resolve() == b.resolve() or (a.exists() and b.exists() and a.samefile(b))
+        try:
+            return a.resolve() == b.resolve() or (a.exists() and b.exists() and a.samefile(b))
+        except RuntimeError as exc:
+            # pathlib on Python <= 3.12 reports symlink loops as RuntimeError.
+            raise ValueError(f"cannot resolve import input/output path: {exc}") from None
     if len(outputs) == 2 and aliases(*outputs):
         raise ValueError("graph and import report must use distinct output paths")
     if any(aliases(out, inp) for out in outputs for inp in inputs):
