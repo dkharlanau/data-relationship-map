@@ -39,6 +39,14 @@ traversal to explicitly selected types. The [synthetic BP path investigation](do
 shows a valid one-to-many partner assignment, an explicit cross-system crosswalk,
 and a deliberate refusal to infer identity from the partner link.
 
+## Run the synthetic BP starter
+
+The [one-command starter](docs/bp-starter.md) runs the required investigation
+cases end to end: clear crosswalk, unexpected 1:N, broken reference, conflicting
+metadata and a changed crosswalk between two authored observations. It also
+makes orphan scope, valid partner assignments and aborted-refresh stops visible.
+It produces a reviewer table and verified handoffs, not a business sign-off.
+
 ## Start with one investigation report
 
 The primary review surface combines structural diagnostics, explicit identity/cardinality policy, bounded upstream/downstream lineage and source provenance:
