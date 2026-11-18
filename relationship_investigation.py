@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import html
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +70,42 @@ def _source_references(
     )
 
 
+class MetadataConflictError(ValueError):
+    """Recorded conflicts cannot be interpreted safely for a review."""
+
+
+def _metadata_conflicts(model: dict[str, Any]) -> list[dict[str, Any]]:
+    findings = []
+    for node in model.get("nodes", []):
+        if "conflicts" not in node:
+            continue
+        conflicts = node["conflicts"]
+        if not isinstance(conflicts, dict):
+            raise MetadataConflictError("recorded metadata conflicts must be an object")
+        for field, values in conflicts.items():
+            if (field not in {"system", "object", "label"}
+                    or not isinstance(values, list)
+                    or any(not isinstance(value, str) or not value.strip() for value in values)
+                    or len(set(values)) < 2):
+                raise MetadataConflictError("recorded metadata conflicts require a supported field and distinct nonblank string values")
+            findings.append({
+                "node": str(node.get("id", "")),
+                "field": field,
+                "values": sorted(set(values)),
+                # The adapter retains node-level contributing rows, not a mapping
+                # from each conflicting value to its particular source row.
+                "contributing_node_provenance": copy.deepcopy(_as_provenance_items(node.get("provenance"))),
+            })
+    return sorted(findings, key=lambda item: (item["node"], item["field"], item["values"]))
+
+
+def _code_json(value: Any) -> str:
+    """Keep supplied values as inert, one-line JSON in Markdown as well as HTML."""
+    encoded = json.dumps(value, sort_keys=True, ensure_ascii=False)
+    fence = "`" * (max((len(run) for run in re.findall(r"`+", encoded)), default=0) + 1)
+    return fence + " " + encoded + " " + fence
+
+
 def build_investigation(
     model: dict[str, Any],
     *,
@@ -77,6 +115,7 @@ def build_investigation(
     stop_systems: set[str] | None = None,
     stop_objects: set[str] | None = None,
 ) -> dict[str, Any]:
+    metadata_conflicts = _metadata_conflicts(model)
     structural = analyze(model)
     policy_result = evaluate(model, policy) if policy is not None else None
 
@@ -125,7 +164,7 @@ def build_investigation(
         )
         if not structural["valid"]:
             status = "invalid_model"
-        elif structural_finding_count or policy_finding_count:
+        elif structural_finding_count or policy_finding_count or metadata_conflicts:
             status = "findings"
         else:
             status = "clear"
@@ -141,7 +180,7 @@ def build_investigation(
             "source_references": _source_references(focus_node, upstream, downstream),
         }
 
-    return {
+    report = {
         "schema_version": SCHEMA_VERSION,
         "status": status,
         "summary": {
@@ -158,6 +197,11 @@ def build_investigation(
         "policy": policy_result,
         "focus": focus_summary,
     }
+    if metadata_conflicts:
+        report["metadata_conflicts"] = metadata_conflicts
+        report["summary"]["metadata_conflict_count"] = len(metadata_conflicts)
+    return report
+
 
 
 def _bullet_findings(report: dict[str, Any]) -> list[str]:
@@ -187,6 +231,10 @@ def _bullet_findings(report: dict[str, Any]) -> list[str]:
     for item in policy.get("identity_collisions", []):
         raw = ", ".join(f"`{value}`" for value in item.get("raw_identities", []))
         lines.append(f"- Identity collision: `{item.get('node')}` represents raw identities {raw}")
+    for conflict in report.get("metadata_conflicts", []):
+        lines.append(f"- Recorded metadata conflict: node {_code_json(conflict['node'])}, field {_code_json(conflict['field'])}; values {_code_json(conflict['values'])}")
+        refs = conflict.get("contributing_node_provenance", [])
+        lines.append("  Contributing node rows (not value-to-row attribution): " + (_code_json(refs) if refs else "not supplied") + ".")
     return lines
 
 
@@ -204,6 +252,10 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Structural findings: **{summary['structural_finding_count']}**",
         f"- Policy findings: **{summary['policy_finding_count']}**",
     ]
+
+    if report.get("metadata_conflicts"):
+        lines += [f"- Recorded metadata conflicts: **{summary['metadata_conflict_count']}**", "",
+                  "Conflicting supplied values need review. The retained label is not an endorsed winner; no value is automatically selected or corrected."]
 
     findings = _bullet_findings(report)
     lines += ["", "## Findings", ""]
@@ -309,7 +361,7 @@ def main() -> int:
             stop_systems=set(args.stop_system),
             stop_objects=set(args.stop_object),
         )
-    except PolicyValidationError as exc:
+    except (PolicyValidationError, MetadataConflictError) as exc:
         parser.error(str(exc))
 
     if args.json_output:

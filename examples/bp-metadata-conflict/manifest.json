@@ -1,0 +1,32 @@
+{
+  "node_sources": [
+    {
+      "file": "objects.csv",
+      "id": "{SYSTEM}:{CLIENT}:{ID}",
+      "system": "{SYSTEM}",
+      "object": "business-partner",
+      "label": "{LABEL}",
+      "required_identity_columns": [
+        "SYSTEM",
+        "CLIENT",
+        "ID"
+      ]
+    }
+  ],
+  "relationship_sources": [
+    {
+      "file": "crosswalk.csv",
+      "from": "{SOURCE_SYSTEM}:{SOURCE_CLIENT}:{SOURCE_ID}",
+      "to": "{TARGET_SYSTEM}:{TARGET_CLIENT}:{TARGET_ID}",
+      "type": "explicit_crosswalk",
+      "required_identity_columns": [
+        "SOURCE_SYSTEM",
+        "SOURCE_CLIENT",
+        "SOURCE_ID",
+        "TARGET_SYSTEM",
+        "TARGET_CLIENT",
+        "TARGET_ID"
+      ]
+    }
+  ]
+}

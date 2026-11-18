@@ -159,6 +159,8 @@ def build_handoff(
         },
         "files": files,
     }
+    if report.get("metadata_conflicts"):
+        manifest["summary"]["metadata_conflicts"] = report["summary"]["metadata_conflict_count"]
     (destination / "manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
