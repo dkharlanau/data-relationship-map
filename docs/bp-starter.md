@@ -6,7 +6,7 @@ customer and business-partner links actually say, where the links came from,
 and where the evidence is incomplete.
 
 This starter runs one small, synthetic investigation through the existing DRM
-commands. It reuses the ordinary CSV exports in
+commands. It reuses the ordinary export rows in
 [the connection-path example](../examples/bp-connection-paths/) and creates
 deliberate variations in a new output directory. It needs no SAP connection,
 client data, paid service or additional runtime dependency.
@@ -30,8 +30,8 @@ source. The rehearsal itself uses only local files and the explicit executable.
 Do not point it at an executable or project supplied by an untrusted party.
 
 On success, open REVIEW.md for the case table and result.json for the checked
-results. commands.json records all 38 DRM invocations, including expected
-nonzero exits. Each case retains its generated CSVs, manifest, import accounting,
+results. commands.json records all 43 DRM invocations, including expected
+nonzero exits. Each case retains its generated CSVs or XLSX workbooks, manifest, import accounting,
 graph, investigation JSON/Markdown/HTML and, where allowed, an integrity-verifiable
 handoff. No existing output directory is overwritten or cleared.
 
@@ -45,12 +45,13 @@ handoff. No existing output directory is overwritten or cleared.
 | Orphan | An additional target is unlinked; full investigation reports findings | Investigate it separately. The focused pack excludes it and can be clear. |
 | Conflicting metadata | Two labels are supplied for one exact ID | Review both descriptions and contributing node rows, without an automatic winner. |
 | Changed crosswalk | The second snapshot maps to a different target; both snapshots can be individually clear | Was the change intended, and which source should govern the next action? |
+| Separate client namespaces | The same display IDs in clients 100 and 200 produce distinct objects and links | Does the supplied key include every namespace needed for this project? |
 | Valid partner assignment | Two ship-to partners connect to one sold-to partner in a supplied sales area | Do not confuse partner relationships with identity links. |
 | Aborted refresh | A required ID component is blank; the old graph remains unchanged | Stop. The old graph has not been revalidated against the failed new export. |
 
-These include the five synthetic scenarios requested in issue #6. The broader
-export-shape backlog in #7, including namespace collisions, is not automatically
-closed by this run.
+The eight graph snapshots include the five synthetic scenarios requested in
+issue #6; the aborted refresh is a separate failure-path check. The broader
+export-shape backlog in #7 is not automatically closed by this run.
 
 The graph IDs retain the supplied system and client. Partner relationship types
 retain the fixture's sales organization, distribution channel and division.
@@ -60,6 +61,39 @@ universal interpretation of organizational data.
 A deliberately selected crosswalk-only path to the ship-to record returns
 NO_PATH. The unrestricted connection still exists. The tool refuses the inference,
 not the possibility that further evidence could establish another relationship.
+
+## Rehearse XLSX without losing string identity
+
+The same runner can generate and import workbooks instead of CSVs:
+
+```bash
+python scripts/rehearse_bp_starter.py \
+  --drm-cli "$PWD/.venv/bin/data-relationship-map" \
+  --format xlsx --output /tmp/bp-starter-xlsx-review
+```
+
+The synthetic workbook writer uses inline strings for every cell. Values such
+as 0004711 and 0 stay strings; formula-looking text is not written as a formula.
+This is not a qualification of arbitrary Excel formulas, cached values, date
+formats, locales or formatting, and it cannot restore identifiers that a source
+application has already rounded or stripped.
+
+CSV and XLSX produce the same business fields and native case statuses. Their
+provenance differs: file and row versus file, sheet and row. Their handoff pack
+IDs consequently differ. Verify each pack separately; a CSV integrity result
+does not verify the XLSX artifact. The source checkout supplies the example
+writer, not a new installed runtime dependency.
+
+The separate-client case uses the same legacy and MDG numbers in clients 100
+and 200. The example ID template includes the client, so both pairs survive and
+the focused client-100 pack excludes the disconnected client-200 component.
+This tests the supplied template, not automatic detection of an omitted business
+key: required columns establish completeness, not that every column is used in
+the ID template. A project owner must decide which fields define identity.
+
+No normalizers are injected. The existing opt-in XLSX normalization feature is
+separate from this rehearsal. A raw-identity collision is evidence to review,
+not proof that two source values represent the same business object.
 
 ## Compare the two observations
 
@@ -73,7 +107,8 @@ live observations, export freshness checks or the measured time of a change.
 The runner calls the existing diff command and saves snapshot-diff.json.
 It checks that the old explicit_crosswalk edge was removed and the new one added.
 
-Inspect the two generated crosswalk.csv files at row 2 alongside the diff.
+Inspect row 2 in the two generated crosswalk.csv files, or the crosswalk
+worksheets in XLSX mode, alongside the diff.
 The diff describes differences between supplied graphs; it does not know why
 the target changed, authorize that change or compare arbitrary source metadata.
 A clear latest snapshot is not evidence that the transition was correct.

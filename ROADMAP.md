@@ -44,8 +44,11 @@
 - Obtain the three SAP/data practitioner reviews scoped in issue #6.
 - Record unavailable columns, repeated preparation work, wrong inferences and
   useful next actions before claiming consulting productivity or product fit.
-- Complete the remaining issue #7 export-shape cases, including namespace
-  collision, without treating the current starter as blanket acceptance.
+- Reproduce the eight CSV/XLSX snapshots, including identical display IDs in
+  different supplied client namespaces. This qualifies the example key template,
+  not automatic detection of omitted namespaces or safe normalization.
+- Complete the remaining issue #7 export-shape cases without treating this
+  bounded inline-string XLSX rehearsal as blanket workbook acceptance.
 
 ## Next — finding severity and lifecycle policy
 

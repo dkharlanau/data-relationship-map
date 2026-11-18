@@ -80,7 +80,7 @@ class BpStarterTests(unittest.TestCase):
         commands = starter.read(self.output / "commands.json")
         self.assertEqual(commands[-1]["args"][0], "import-csv")
         self.assertEqual(commands[-1]["exit"], 2)
-        self.assertEqual(len(commands), 38)
+        self.assertEqual(len(commands), 43)
 
     def test_existing_directory_is_never_overwritten(self):
         before = (self.output / "result.json").read_bytes()

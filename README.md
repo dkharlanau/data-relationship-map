@@ -45,6 +45,9 @@ The [one-command starter](docs/bp-starter.md) runs the required investigation
 cases end to end: clear crosswalk, unexpected 1:N, broken reference, conflicting
 metadata and a changed crosswalk between two authored observations. It also
 makes orphan scope, valid partner assignments and aborted-refresh stops visible.
+Use `--format xlsx` to repeat the same cases as inline-string workbooks. Both
+formats preserve leading zeros and keep equal display IDs in different supplied
+client namespaces separate.
 It produces a reviewer table and verified handoffs, not a business sign-off.
 
 ## Start with one investigation report
@@ -204,14 +207,16 @@ A manifest can combine several crosswalk, partner-function, organization or othe
 
 ## Ask different relationship questions explicitly
 
-### Identity path
+### Connection path
 
 ```bash
 data-relationship-map path examples/customer-chain.json \
   AFS:4711 S4:10000891
 ```
 
-`path` is intentionally symmetric. It answers **how are these two identities connected?** without pretending every relationship is directional impact.
+`path` is intentionally symmetric. It answers **how are these two records connected?**,
+not whether they are the same business object. Select exact relationship types
+with `--relation` when needed; use lineage for directional impact.
 
 ### Downstream lineage
 
