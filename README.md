@@ -205,6 +205,26 @@ data-relationship-map import-xlsx examples/xlsx/manifest.json \
 
 A manifest can combine several crosswalk, partner-function, organization or other extracts into one canonical investigation model while retaining file/sheet/row provenance.
 
+### XLSX normalization is an explicit contract
+
+An XLSX manifest may declare `normalizers` globally or per source. Each column
+maps to a rule string or an ordered list of rule strings: `strip`, `upper`,
+`lower`, `strip_leading_zeros`. Global rules run first, then source rules; an
+empty list is an explicit no-op, not an override of global rules.
+
+Malformed declarations and unknown operations fail before any workbook opens.
+Every declared column must exist in its worksheet header, even if there are no
+data rows. A wholly empty worksheet cannot verify declared normalizer columns.
+A failed import returns exit 2 and does not replace the graph; the optional
+import report records an abort, not a successfully completed empty model.
+
+For example, use `{"ID": "upper"}`, not `{"ID": {"upper": false}}`. The latter
+is invalid, not a disabled rule. Names and operations are exact, case-sensitive
+strings; no coercion, inferred key repair or implicit normalization is applied.
+These checks do not validate the entire manifest or establish that a chosen
+normalizer is safe for a business identity. Review collisions and provenance
+before accepting any equivalence. See [the bounded example](docs/xlsx-normalizers.md).
+
 ## Ask different relationship questions explicitly
 
 ### Connection path
