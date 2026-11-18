@@ -5,7 +5,7 @@
 - canonical node/relationship model
 - deterministic validation
 - broken-reference, duplicate, and orphan detection
-- shortest cross-system identity path
+- shortest undirected connection path with optional exact relationship-type selection (not identity proof)
 - strict downstream and upstream lineage traversal
 - system/object boundary stops and max-depth impact limits
 - provenance-preserving lineage edges and deterministic paths

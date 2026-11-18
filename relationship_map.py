@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections import defaultdict, deque
+from collections.abc import Collection
 from pathlib import Path
 from typing import Any
 
@@ -63,13 +64,33 @@ def analyze(model: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def shortest_path(model: dict[str, Any], start: str, end: str) -> list[str]:
+def shortest_path(
+    model: dict[str, Any], start: str, end: str, *,
+    relation_types: Collection[str] | None = None,
+) -> list[str]:
+    """Return an undirected connection path, not a verdict about identity.
+
+    None retains the unrestricted behavior. An explicit collection permits only
+    exact type names; an empty collection permits no edges. A known node still
+    has a zero-edge path to itself. This does not apply cardinality policy or
+    validate the meaning, authority or freshness of a supplied relationship.
+    """
+    if relation_types is not None and (
+        not isinstance(relation_types, Collection)
+        or isinstance(relation_types, (str, bytes, dict))
+        or any(not isinstance(t, str) or not t.strip() or t != t.strip()
+               for t in relation_types)
+    ):
+        raise ValueError("relation types must be a collection of non-blank exact names")
+    allowed = None if relation_types is None else frozenset(relation_types)
     graph: dict[str, list[str]] = defaultdict(list)
     known = {str(node.get("id", "")) for node in model.get("nodes", [])}
     if start not in known or end not in known:
         return []
 
     for rel in model.get("relationships", []):
+        if allowed is not None and str(rel.get("type", "related_to")) not in allowed:
+            continue
         source = str(rel.get("from", ""))
         target = str(rel.get("to", ""))
         if source in known and target in known:
@@ -97,11 +118,20 @@ def main() -> int:
     path_parser = sub.add_parser("path")
     path_parser.add_argument("from_id")
     path_parser.add_argument("to_id")
+    path_parser.add_argument(
+        "--relation", action="append", dest="relation_types", metavar="TYPE",
+        help="permit this exact relationship type (repeat for alternatives); "
+             "omitting permits every type, not only identity links",
+    )
     args = parser.parse_args()
 
     model = load_model(args.model)
     if args.command == "path":
-        path = shortest_path(model, args.from_id, args.to_id)
+        try:
+            path = shortest_path(model, args.from_id, args.to_id,
+                                 relation_types=args.relation_types)
+        except ValueError:
+            parser.error("relation types must be non-blank exact names")
         print(" -> ".join(path) if path else "NO_PATH")
         return 0 if path else 2
 

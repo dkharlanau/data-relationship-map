@@ -30,6 +30,15 @@ Supplied cardinality policies are validated before results are written: misspell
 fields, ambiguous JSON and non-integer limits stop with exit 2 rather than silently
 weakening the checks. See the [policy contract and synthetic refusal](docs/policy-contract.md).
 
+## Keep a connection separate from an identity claim
+
+A partner assignment can connect two different business partners. The path
+command follows all relationship types by default; it does not establish that
+connected records describe the same object. Repeat `--relation TYPE` to limit
+traversal to explicitly selected types. The [synthetic BP path investigation](docs/bp-connection-paths.md)
+shows a valid one-to-many partner assignment, an explicit cross-system crosswalk,
+and a deliberate refusal to infer identity from the partner link.
+
 ## Start with one investigation report
 
 The primary review surface combines structural diagnostics, explicit identity/cardinality policy, bounded upstream/downstream lineage and source provenance:
